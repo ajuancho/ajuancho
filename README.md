@@ -1,5 +1,7 @@
-## Hi there 👋
-
+## Hi there 👋 
+🌱 I’m currently investigating on how AI and OTT´s are afeccting creatión and cultural industries. <br>
+Based on Argentina and River Plate fan.<br>
+[My instagram](https://www.instagram.com/juanaranovich/)
 <!--
 **ajuancho/ajuancho** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
 
