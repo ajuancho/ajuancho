@@ -1,6 +1,9 @@
-# Scraper de Agenda Buenos Aires
+# Scrapers de Bahoy
 
-Scraper robusto desarrollado con Scrapy para extraer eventos de la [Agenda de Buenos Aires](https://turismo.buenosaires.gob.ar/es/agenda).
+Scrapers robustos desarrollados con Scrapy para extraer eventos de múltiples fuentes:
+
+- **Agenda Buenos Aires**: Eventos culturales de la [Agenda de Buenos Aires](https://turismo.buenosaires.gob.ar/es/agenda)
+- **Alternativa Teatral**: Obras de teatro de [Alternativa Teatral](https://www.alternativateatral.com/)
 
 ## Características
 
@@ -17,13 +20,14 @@ Scraper robusto desarrollado con Scrapy para extraer eventos de la [Agenda de Bu
 
 ```
 app/scrapers/
-├── __init__.py                 # Inicialización del paquete
-├── README.md                   # Esta documentación
-├── items.py                    # Definición de estructura de datos (EventItem)
-├── agenda_ba_spider.py         # Spider principal
-├── pipelines.py                # Procesamiento y guardado en DB
-├── settings.py                 # Configuración de Scrapy
-└── run_scraper.py              # Script de ejecución
+├── __init__.py                      # Inicialización del paquete
+├── README.md                        # Esta documentación
+├── items.py                         # Definición de estructura de datos (EventItem)
+├── agenda_ba_spider.py              # Spider de Agenda Buenos Aires
+├── alternativa_teatral_spider.py    # Spider de Alternativa Teatral
+├── pipelines.py                     # Procesamiento y guardado en DB
+├── settings.py                      # Configuración de Scrapy
+└── run_scraper.py                   # Script de ejecución
 ```
 
 ## Instalación
@@ -65,25 +69,33 @@ El scraper creará automáticamente la tabla `events` si no existe. La estructur
 ```bash
 # Desde el directorio backend
 cd app/scrapers
-python run_scraper.py
+
+# Ejecutar todos los scrapers
+python run_scraper.py --spider all
+
+# Ejecutar solo Agenda Buenos Aires
+python run_scraper.py --spider agenda_ba
+
+# Ejecutar solo Alternativa Teatral
+python run_scraper.py --spider alternativa_teatral
 ```
 
-Esto scrapeará todos los eventos y los guardará en PostgreSQL.
+Esto scrapeará los eventos y los guardará en PostgreSQL.
 
 ### Opciones avanzadas
 
 ```bash
 # Con salida a archivo JSON
-python run_scraper.py --output events.json
+python run_scraper.py --spider alternativa_teatral --output events.json
 
 # Con salida a archivo CSV
-python run_scraper.py --output events.csv
+python run_scraper.py --spider agenda_ba --output events.csv
 
 # Modo debug (logs detallados)
-python run_scraper.py --debug
+python run_scraper.py --spider all --debug
 
 # Combinar opciones
-python run_scraper.py --output events.json --debug
+python run_scraper.py --spider alternativa_teatral --output events.json --debug
 ```
 
 ### Uso directo con Scrapy
@@ -91,8 +103,64 @@ python run_scraper.py --output events.json --debug
 ```bash
 # Desde el directorio backend
 export SCRAPY_SETTINGS_MODULE=app.scrapers.settings
+
+# Ejecutar spider de Agenda Buenos Aires
 scrapy crawl agenda_ba
+
+# Ejecutar spider de Alternativa Teatral
+scrapy crawl alternativa_teatral
 ```
+
+## Spider de Alternativa Teatral
+
+### Características específicas
+
+El spider de Alternativa Teatral extrae información detallada de obras de teatro:
+
+- **Información de la obra**: Título, sinopsis completa
+- **Elenco**: Lista de actores (guardados como tags)
+- **Director**: Guardado como tag con formato "Director: Nombre"
+- **Género teatral**: Comedia, Drama, Musical, etc. (guardado como tag)
+- **Sala/Teatro**: Nombre del teatro y dirección
+- **Funciones**: Múltiples fechas y horarios
+- **Precio**: Precio de entradas
+- **Duración**: Duración de la obra (guardada como tag)
+- **Imágenes**: Póster de la obra
+
+### Categorización
+
+Todas las obras se categorizan como **"theater"** (Teatro).
+
+Los géneros teatrales se mapean a subcategorías:
+
+| Género Original | Subcategoría |
+|----------------|--------------|
+| Comedia | comedy |
+| Drama | drama |
+| Musical | musical |
+| Infantil | kids |
+| Unipersonal | one_person_show |
+| Stand-up | stand_up |
+| Comedia Musical | musical_comedy |
+| Drama Histórico | historical_drama |
+| Tragedia | tragedy |
+| Teatro Experimental | experimental |
+| Teatro Físico | physical_theater |
+| Clown | clown |
+| Títeres | puppets |
+| Danza Teatro | dance_theater |
+| Cabaret | cabaret |
+| Mimo | mime |
+| Teatro de Sombras | shadow_theater |
+
+### Manejo de anti-bot
+
+El spider de Alternativa Teatral incluye configuración especial para evitar bloqueos:
+
+- User-Agent de navegador real (Chrome)
+- Delay de 3 segundos entre requests
+- Headers completos simulando navegador
+- Respeto de robots.txt
 
 ## Configuración
 
@@ -154,7 +222,7 @@ POSTGRES_DB = 'bahoy_db'
 
 ### Metadata
 - `url`: URL original del evento
-- `source`: Fuente (siempre "agenda_ba")
+- `source`: Fuente ("agenda_ba" o "alternativa_teatral")
 - `event_hash`: Hash MD5 único para detectar duplicados
 - `scraped_at`: Timestamp del scraping
 

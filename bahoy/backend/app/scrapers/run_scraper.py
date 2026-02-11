@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 Bahoy - Runner para Scrapy
-Script para ejecutar el scraper de Agenda Buenos Aires fácilmente.
+Script para ejecutar los scrapers de Bahoy fácilmente.
 
 Uso:
-    python run_scraper.py
-    python run_scraper.py --output events.json
-    python run_scraper.py --debug
+    python run_scraper.py --spider agenda_ba
+    python run_scraper.py --spider alternativa_teatral --output events.json
+    python run_scraper.py --spider all --debug
 """
 
 import sys
@@ -20,7 +20,14 @@ from scrapy.utils.project import get_project_settings
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from app.scrapers.agenda_ba_spider import AgendaBaSpider
+from app.scrapers.alternativa_teatral_spider import AlternativaTeatralSpider
 from app.scrapers import settings as scrapy_settings
+
+# Registro de scrapers disponibles
+AVAILABLE_SPIDERS = {
+    'agenda_ba': AgendaBaSpider,
+    'alternativa_teatral': AlternativaTeatralSpider,
+}
 
 
 def setup_logging(debug: bool = False):
@@ -39,11 +46,12 @@ def setup_logging(debug: bool = False):
     )
 
 
-def run_scraper(output_file: str = None, debug: bool = False):
+def run_scraper(spider_name: str = 'all', output_file: str = None, debug: bool = False):
     """
-    Ejecuta el scraper de Agenda Buenos Aires.
+    Ejecuta uno o todos los scrapers de Bahoy.
 
     Args:
+        spider_name: Nombre del spider a ejecutar ('agenda_ba', 'alternativa_teatral', 'all')
         output_file: Archivo de salida opcional (JSON/CSV)
         debug: Modo debug para logs detallados
     """
@@ -51,8 +59,20 @@ def run_scraper(output_file: str = None, debug: bool = False):
 
     logger = logging.getLogger(__name__)
     logger.info("=" * 60)
-    logger.info("BAHOY - Scraper de Agenda Buenos Aires")
+    logger.info("BAHOY - Scraper de Eventos")
     logger.info("=" * 60)
+
+    # Determinar qué spiders ejecutar
+    if spider_name == 'all':
+        spiders_to_run = list(AVAILABLE_SPIDERS.values())
+        logger.info(f"Ejecutando todos los spiders: {', '.join(AVAILABLE_SPIDERS.keys())}")
+    elif spider_name in AVAILABLE_SPIDERS:
+        spiders_to_run = [AVAILABLE_SPIDERS[spider_name]]
+        logger.info(f"Ejecutando spider: {spider_name}")
+    else:
+        logger.error(f"Spider '{spider_name}' no encontrado")
+        logger.error(f"Spiders disponibles: {', '.join(AVAILABLE_SPIDERS.keys())}, all")
+        sys.exit(1)
 
     # Crear configuración del proceso
     settings_dict = {
@@ -115,12 +135,14 @@ def run_scraper(output_file: str = None, debug: bool = False):
     # Crear y configurar el proceso de crawling
     process = CrawlerProcess(settings_dict)
 
-    # Añadir el spider al proceso
-    process.crawl(AgendaBaSpider)
+    # Añadir el/los spider(s) al proceso
+    for spider_class in spiders_to_run:
+        process.crawl(spider_class)
 
     # Iniciar el scraping
-    logger.info("Iniciando scraper...")
-    logger.info(f"URL objetivo: {AgendaBaSpider.start_urls[0]}")
+    logger.info("Iniciando scraper(s)...")
+    for spider_class in spiders_to_run:
+        logger.info(f"  - {spider_class.name}: {spider_class.start_urls[0]}")
     logger.info("-" * 60)
 
     try:
@@ -143,26 +165,41 @@ def main():
     Punto de entrada principal del script.
     """
     parser = argparse.ArgumentParser(
-        description='Ejecuta el scraper de Agenda Buenos Aires',
+        description='Ejecuta los scrapers de eventos de Bahoy',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Ejemplos de uso:
 
-  # Ejecutar scraper y guardar en PostgreSQL
-  python run_scraper.py
+  # Ejecutar spider de Agenda Buenos Aires
+  python run_scraper.py --spider agenda_ba
+
+  # Ejecutar spider de Alternativa Teatral
+  python run_scraper.py --spider alternativa_teatral
+
+  # Ejecutar todos los spiders
+  python run_scraper.py --spider all
 
   # Ejecutar con salida a archivo JSON
-  python run_scraper.py --output events.json
+  python run_scraper.py --spider alternativa_teatral --output events.json
 
   # Ejecutar con salida a archivo CSV
-  python run_scraper.py --output events.csv
+  python run_scraper.py --spider agenda_ba --output events.csv
 
   # Ejecutar en modo debug (logs detallados)
-  python run_scraper.py --debug
+  python run_scraper.py --spider all --debug
 
   # Combinar opciones
-  python run_scraper.py --output events.json --debug
+  python run_scraper.py --spider alternativa_teatral --output events.json --debug
         """
+    )
+
+    parser.add_argument(
+        '-s', '--spider',
+        type=str,
+        default='all',
+        choices=['agenda_ba', 'alternativa_teatral', 'all'],
+        help='Spider a ejecutar (default: all)',
+        metavar='SPIDER'
     )
 
     parser.add_argument(
@@ -181,7 +218,7 @@ Ejemplos de uso:
     args = parser.parse_args()
 
     # Ejecutar el scraper
-    run_scraper(output_file=args.output, debug=args.debug)
+    run_scraper(spider_name=args.spider, output_file=args.output, debug=args.debug)
 
 
 if __name__ == '__main__':
