@@ -1,0 +1,36 @@
+{
+  // Configuración de TypeScript para Next.js
+  "compilerOptions": {
+    // Versión objetivo de JavaScript
+    "target": "ES2020",
+    // Sistema de módulos
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    // Plugins de Next.js
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    // Paths personalizados para imports más limpios
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/app/*": ["./src/app/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

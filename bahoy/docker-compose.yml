@@ -1,0 +1,165 @@
+# ========== Docker Compose - Bahoy ==========
+# Este archivo orquesta todos los servicios de la aplicación
+
+version: '3.8'
+
+services:
+  # ========== Backend - API con FastAPI ==========
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bahoy-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Configuración de base de datos
+      POSTGRES_SERVER: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-bahoy_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bahoy_password}
+      POSTGRES_DB: ${POSTGRES_DB:-bahoy_db}
+
+      # Configuración de Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+
+      # Configuración general
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEBUG: ${DEBUG:-true}
+      SECRET_KEY: ${SECRET_KEY:-tu-clave-secreta-cambiar-en-produccion}
+    volumes:
+      # Montar código para desarrollo con hot-reload
+      - ./backend/app:/app/app
+      # Volumen para logs
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bahoy-network
+
+  # ========== Frontend - Next.js ==========
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bahoy-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NODE_ENV=${NODE_ENV:-development}
+    volumes:
+      # Montar código para desarrollo con hot-reload
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      # Excluir node_modules del montaje
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - bahoy-network
+
+  # ========== PostgreSQL - Base de datos principal ==========
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: bahoy-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bahoy_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bahoy_password}
+      POSTGRES_DB: ${POSTGRES_DB:-bahoy_db}
+      # Configuración de rendimiento
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=es_ES.UTF-8"
+    volumes:
+      # Persistencia de datos
+      - postgres_data:/var/lib/postgresql/data
+      # Scripts de inicialización (si existen)
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bahoy_user} -d ${POSTGRES_DB:-bahoy_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bahoy-network
+
+  # ========== Redis - Cache y mensajería ==========
+  redis:
+    image: redis:7-alpine
+    container_name: bahoy-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-}
+    volumes:
+      # Persistencia de datos
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bahoy-network
+
+  # ========== pgAdmin - Administración de PostgreSQL (opcional) ==========
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: bahoy-pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@bahoy.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - bahoy-network
+    profiles:
+      - tools  # Solo se inicia si se especifica el perfil
+
+# ========== Volúmenes ==========
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+# ========== Redes ==========
+networks:
+  bahoy-network:
+    driver: bridge
+
+# ========== Notas de uso ==========
+# Iniciar todos los servicios:
+#   docker-compose up -d
+#
+# Iniciar con pgAdmin:
+#   docker-compose --profile tools up -d
+#
+# Ver logs:
+#   docker-compose logs -f [servicio]
+#
+# Detener todos los servicios:
+#   docker-compose down
+#
+# Limpiar volúmenes (¡cuidado, elimina datos!):
+#   docker-compose down -v
