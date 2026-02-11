@@ -1,0 +1,115 @@
+/**
+ * Bahoy - Estilos globales
+ * Este archivo contiene las directivas de Tailwind y estilos personalizados globales.
+ */
+
+/* Directivas de Tailwind CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Estilos base personalizados */
+@layer base {
+  /* Configurar variables CSS para colores si es necesario */
+  :root {
+    --color-primary: 14 165 233; /* RGB de primary-500 */
+    --color-secondary: 217 70 239;
+  }
+
+  /* Estilos generales del body */
+  body {
+    @apply text-gray-900 antialiased;
+  }
+
+  /* Estilos de headings */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-semibold;
+  }
+
+  /* Scrollbar personalizada (opcional) */
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
+}
+
+/* Componentes reutilizables */
+@layer components {
+  /* Botón principal */
+  .btn-primary {
+    @apply bg-primary-500 hover:bg-primary-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors duration-200;
+  }
+
+  /* Botón secundario */
+  .btn-secondary {
+    @apply bg-secondary-500 hover:bg-secondary-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors duration-200;
+  }
+
+  /* Botón outline */
+  .btn-outline {
+    @apply border-2 border-primary-500 text-primary-500 hover:bg-primary-500 hover:text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200;
+  }
+
+  /* Input de formulario */
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200;
+  }
+
+  /* Card genérica */
+  .card {
+    @apply bg-white rounded-xl shadow-card p-6 hover:shadow-lg transition-shadow duration-200;
+  }
+
+  /* Container personalizado */
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}
+
+/* Utilidades personalizadas */
+@layer utilities {
+  /* Gradiente de texto */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-500 to-secondary-500 bg-clip-text text-transparent;
+  }
+
+  /* Animación de fade in */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  /* Glassmorphism effect */
+  .glass {
+    @apply bg-white/80 backdrop-blur-lg;
+  }
+}
+
+/* Animaciones personalizadas */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Estilos para modo oscuro (opcional) */
+@media (prefers-color-scheme: dark) {
+  .dark {
+    /* Agregar estilos de modo oscuro aquí */
+  }
+}

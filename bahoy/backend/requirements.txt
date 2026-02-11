@@ -1,0 +1,63 @@
+# ========== Framework Web ==========
+fastapi==0.109.0              # Framework web moderno y rápido
+uvicorn[standard]==0.27.0     # Servidor ASGI de alto rendimiento
+pydantic==2.5.3              # Validación de datos y configuración
+pydantic-settings==2.1.0     # Gestión de configuración con Pydantic
+
+# ========== Base de Datos ==========
+sqlalchemy==2.0.25           # ORM para interactuar con PostgreSQL
+asyncpg==0.29.0              # Driver asíncrono para PostgreSQL
+psycopg2-binary==2.9.9       # Driver síncrono para PostgreSQL
+alembic==1.13.1              # Migraciones de base de datos
+pgvector==0.2.4              # Soporte para vectores en PostgreSQL
+
+# ========== Cache ==========
+redis==5.0.1                 # Cliente de Redis para cache
+hiredis==2.3.2               # Parser rápido para Redis
+
+# ========== Web Scraping ==========
+beautifulsoup4==4.12.3       # Parsing de HTML y XML
+lxml==5.1.0                  # Parser XML/HTML rápido
+requests==2.31.0             # Cliente HTTP simple
+httpx==0.26.0                # Cliente HTTP asíncrono moderno
+playwright==1.41.1           # Automatización de navegador para sitios complejos
+
+# ========== Procesamiento de Lenguaje Natural (NLP) ==========
+transformers==4.37.2         # Modelos de transformers (BERT, etc.)
+sentence-transformers==2.3.1 # Embeddings de oraciones
+torch==2.2.0                 # PyTorch para modelos de ML
+spacy==3.7.2                 # NLP industrial
+langdetect==1.0.9            # Detección de idioma
+
+# ========== Procesamiento de Datos ==========
+pandas==2.2.0                # Manipulación de datos
+numpy==1.26.3                # Operaciones numéricas
+
+# ========== Autenticación y Seguridad ==========
+python-jose[cryptography]==3.3.0  # JWT tokens
+passlib[bcrypt]==1.7.4       # Hashing de contraseñas
+python-multipart==0.0.6      # Soporte para formularios multipart
+
+# ========== Utilidades ==========
+python-dotenv==1.0.0         # Cargar variables de entorno desde .env
+aiofiles==23.2.1             # Operaciones de archivos asíncronas
+python-slugify==8.0.3        # Generación de slugs para URLs
+email-validator==2.1.0.post1 # Validación de emails
+
+# ========== Monitoreo y Logging ==========
+loguru==0.7.2                # Logging mejorado
+sentry-sdk[fastapi]==1.40.0  # Monitoreo de errores
+
+# ========== Testing ==========
+pytest==8.0.0                # Framework de testing
+pytest-asyncio==0.23.4       # Testing asíncrono
+pytest-cov==4.1.0            # Cobertura de código
+httpx==0.26.0                # Cliente HTTP para tests
+faker==22.6.0                # Generación de datos de prueba
+
+# ========== Desarrollo ==========
+black==24.1.1                # Formateador de código
+flake8==7.0.0                # Linter de código
+mypy==1.8.0                  # Type checking
+isort==5.13.2                # Ordenar imports
+pre-commit==3.6.0            # Git hooks para calidad de código
