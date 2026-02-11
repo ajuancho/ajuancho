@@ -1,10 +1,77 @@
 # ========== Docker Compose - Bahoy ==========
-# Este archivo orquesta todos los servicios de la aplicación
-
-version: '3.8'
+# Este archivo orquesta todos los servicios de la aplicación Bahoy.
+#
+# Servicios principales:
+#   - postgres:       Base de datos PostgreSQL con pgvector (puerto 5432)
+#   - redis:          Cache y broker de mensajes (puerto 6379)
+#   - backend:        API FastAPI (puerto 8000)
+#   - frontend:       Aplicación Next.js (puerto 3000)
+#
+# Servicios de procesamiento (Celery):
+#   - celery-worker:  Worker para tareas asíncronas (scraping, NLP)
+#   - celery-beat:    Scheduler de tareas programadas
+#
+# Servicios opcionales (perfil "tools"):
+#   - flower:         UI de monitoreo de Celery (puerto 5555)
+#   - pgadmin:        Administrador de PostgreSQL (puerto 5050)
 
 services:
-  # ========== Backend - API con FastAPI ==========
+
+  # ========== PostgreSQL con pgvector ==========
+  # Base de datos principal con soporte para búsqueda de vectores.
+  # Usa la imagen oficial de pgvector que incluye la extensión precompilada.
+  # El script init-db.sql se ejecuta automáticamente en el primer arranque.
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: bahoy-postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bahoy_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bahoy_password}
+      POSTGRES_DB: ${POSTGRES_DB:-bahoy_db}
+    volumes:
+      # Persistencia de datos - sobrevive a docker-compose down
+      - postgres_data:/var/lib/postgresql/data
+      # Script de inicialización: crea extensiones pgvector, uuid-ossp, unaccent, pg_trgm
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bahoy_user} -d ${POSTGRES_DB:-bahoy_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bahoy-network
+
+  # ========== Redis ==========
+  # Servidor de cache en memoria y broker de mensajes para Celery.
+  # Se usa para:
+  #   - Cache de respuestas de la API (reduce carga en PostgreSQL)
+  #   - Broker de mensajes para Celery (cola de tareas de scraping)
+  #   - Backend de resultados de Celery
+  redis:
+    image: redis:7-alpine
+    container_name: bahoy-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      # Persistencia de datos con AOF (Append Only File)
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bahoy-network
+
+  # ========== Backend - FastAPI ==========
+  # API REST construida con FastAPI.
+  # En desarrollo, el código se monta como volumen para hot-reload automático
+  # (uvicorn detecta cambios en el código y reinicia el servidor).
   backend:
     build:
       context: ./backend
@@ -14,26 +81,23 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Configuración de base de datos
+      # Conexión a PostgreSQL (usa el nombre del servicio como hostname)
       POSTGRES_SERVER: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER:-bahoy_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bahoy_password}
       POSTGRES_DB: ${POSTGRES_DB:-bahoy_db}
-
-      # Configuración de Redis
+      # Conexión a Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-
-      # Configuración general
+      # Configuración de la aplicación
       ENVIRONMENT: ${ENVIRONMENT:-development}
       DEBUG: ${DEBUG:-true}
       SECRET_KEY: ${SECRET_KEY:-tu-clave-secreta-cambiar-en-produccion}
     volumes:
-      # Montar código para desarrollo con hot-reload
+      # Montar código fuente para desarrollo con hot-reload
       - ./backend/app:/app/app
-      # Volumen para logs
+      # Directorio de logs compartido con el host
       - ./logs:/app/logs
     depends_on:
       postgres:
@@ -44,6 +108,9 @@ services:
       - bahoy-network
 
   # ========== Frontend - Next.js ==========
+  # Aplicación web construida con Next.js.
+  # Se conecta al backend a través de NEXT_PUBLIC_API_URL.
+  # En desarrollo, el código fuente se monta para hot-reload.
   frontend:
     build:
       context: ./frontend
@@ -53,68 +120,23 @@ services:
     ports:
       - "3000:3000"
     environment:
+      # URL del backend - el frontend hace requests a esta URL
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NODE_ENV=${NODE_ENV:-development}
     volumes:
-      # Montar código para desarrollo con hot-reload
+      # Montar código fuente para desarrollo con hot-reload
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
-      # Excluir node_modules del montaje
+      # Excluir node_modules del montaje (usa los del contenedor)
       - /app/node_modules
     depends_on:
       - backend
     networks:
       - bahoy-network
 
-  # ========== PostgreSQL - Base de datos principal ==========
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: bahoy-postgres
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-bahoy_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bahoy_password}
-      POSTGRES_DB: ${POSTGRES_DB:-bahoy_db}
-      # Configuración de rendimiento
-      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=es_ES.UTF-8"
-    volumes:
-      # Persistencia de datos
-      - postgres_data:/var/lib/postgresql/data
-      # Scripts de inicialización (si existen)
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bahoy_user} -d ${POSTGRES_DB:-bahoy_db}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - bahoy-network
-
-  # ========== Redis - Cache y mensajería ==========
-  redis:
-    image: redis:7-alpine
-    container_name: bahoy-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    command: >
-      redis-server
-      --appendonly yes
-      --requirepass ${REDIS_PASSWORD:-}
-    volumes:
-      # Persistencia de datos
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - bahoy-network
-
-  # ========== Celery Worker - Procesamiento de tareas ==========
+  # ========== Celery Worker ==========
+  # Procesa tareas asíncronas: scraping de eventos, procesamiento NLP, etc.
+  # Usa la misma imagen que el backend pero ejecuta el worker de Celery.
   celery-worker:
     build:
       context: ./backend
@@ -123,26 +145,18 @@ services:
     restart: unless-stopped
     command: celery -A app.celery_app worker --loglevel=info --concurrency=2
     environment:
-      # Configuración de base de datos
       POSTGRES_SERVER: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER:-bahoy_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bahoy_password}
       POSTGRES_DB: ${POSTGRES_DB:-bahoy_db}
-
-      # Configuración de Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-
-      # Configuración general
       ENVIRONMENT: ${ENVIRONMENT:-development}
       DEBUG: ${DEBUG:-true}
       SECRET_KEY: ${SECRET_KEY:-tu-clave-secreta-cambiar-en-produccion}
     volumes:
-      # Montar código para desarrollo
       - ./backend/app:/app/app
-      # Volumen para logs
       - ./logs:/app/logs
     depends_on:
       postgres:
@@ -152,7 +166,11 @@ services:
     networks:
       - bahoy-network
 
-  # ========== Celery Beat - Scheduler de tareas programadas ==========
+  # ========== Celery Beat ==========
+  # Scheduler que dispara tareas programadas (cron-like).
+  # Configurado para ejecutar scrapers diariamente:
+  #   - Agenda BA: 6:00 AM (hora Buenos Aires)
+  #   - Alternativa Teatral: 7:00 AM (hora Buenos Aires)
   celery-beat:
     build:
       context: ./backend
@@ -161,28 +179,20 @@ services:
     restart: unless-stopped
     command: celery -A app.celery_app beat --loglevel=info
     environment:
-      # Configuración de base de datos
       POSTGRES_SERVER: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER:-bahoy_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bahoy_password}
       POSTGRES_DB: ${POSTGRES_DB:-bahoy_db}
-
-      # Configuración de Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-
-      # Configuración general
       ENVIRONMENT: ${ENVIRONMENT:-development}
       DEBUG: ${DEBUG:-true}
       SECRET_KEY: ${SECRET_KEY:-tu-clave-secreta-cambiar-en-produccion}
     volumes:
-      # Montar código para desarrollo
       - ./backend/app:/app/app
-      # Volumen para logs
       - ./logs:/app/logs
-      # Volumen para el archivo de estado de Beat
+      # Persistir el archivo de schedule de Beat entre reinicios
       - celery_beat_data:/tmp
     depends_on:
       postgres:
@@ -193,6 +203,8 @@ services:
       - bahoy-network
 
   # ========== Flower - Monitoreo de Celery (opcional) ==========
+  # Panel web para monitorear workers, tareas activas y resultados.
+  # Solo se inicia con: docker compose --profile tools up -d
   flower:
     build:
       context: ./backend
@@ -203,15 +215,10 @@ services:
     ports:
       - "5555:5555"
     environment:
-      # Configuración de Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-
-      # Configuración general
       ENVIRONMENT: ${ENVIRONMENT:-development}
     volumes:
-      # Montar código para desarrollo
       - ./backend/app:/app/app
     depends_on:
       - redis
@@ -219,9 +226,11 @@ services:
     networks:
       - bahoy-network
     profiles:
-      - tools  # Solo se inicia si se especifica el perfil
+      - tools
 
   # ========== pgAdmin - Administración de PostgreSQL (opcional) ==========
+  # Interfaz web para administrar y consultar la base de datos.
+  # Solo se inicia con: docker compose --profile tools up -d
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: bahoy-pgadmin
@@ -239,9 +248,11 @@ services:
     networks:
       - bahoy-network
     profiles:
-      - tools  # Solo se inicia si se especifica el perfil
+      - tools
 
-# ========== Volúmenes ==========
+# ========== Volúmenes persistentes ==========
+# Los volúmenes permiten que los datos sobrevivan a reinicios de contenedores.
+# Para eliminarlos: docker compose down -v (¡cuidado, elimina todos los datos!)
 volumes:
   postgres_data:
     driver: local
@@ -252,49 +263,37 @@ volumes:
   celery_beat_data:
     driver: local
 
-# ========== Redes ==========
+# ========== Red interna ==========
+# Todos los servicios se comunican a través de esta red bridge.
+# Los servicios se referencian entre sí por nombre (ej: postgres, redis).
 networks:
   bahoy-network:
     driver: bridge
 
-# ========== Notas de uso ==========
-# Iniciar todos los servicios:
-#   docker-compose up -d
+# ========== Guía de uso ==========
 #
-# Iniciar con herramientas de monitoreo (pgAdmin y Flower):
-#   docker-compose --profile tools up -d
+# Iniciar servicios principales:
+#   docker compose up -d
 #
-# Ver logs:
-#   docker-compose logs -f [servicio]
-#   docker-compose logs -f celery-worker     # Logs del worker de Celery
-#   docker-compose logs -f celery-beat       # Logs del scheduler de Celery
+# Iniciar con herramientas de monitoreo (pgAdmin + Flower):
+#   docker compose --profile tools up -d
+#
+# Ver logs de un servicio:
+#   docker compose logs -f backend
+#   docker compose logs -f celery-worker
 #
 # Detener todos los servicios:
-#   docker-compose down
+#   docker compose down
 #
-# Limpiar volúmenes (¡cuidado, elimina datos!):
-#   docker-compose down -v
+# Eliminar datos (volúmenes):
+#   docker compose down -v
 #
-# ========== Servicios disponibles ==========
-# - backend: API FastAPI (puerto 8000)
-# - frontend: Next.js (puerto 3000)
-# - postgres: Base de datos PostgreSQL (puerto 5432)
-# - redis: Cache y broker de mensajes (puerto 6379)
-# - celery-worker: Worker de Celery para tareas asíncronas
-# - celery-beat: Scheduler de tareas programadas
-# - flower: UI de monitoreo de Celery (puerto 5555, perfil tools)
-# - pgadmin: Administrador de PostgreSQL (puerto 5050, perfil tools)
-#
-# ========== Endpoints importantes ==========
-# - API: http://localhost:8000
-# - API Docs: http://localhost:8000/docs
-# - Frontend: http://localhost:3000
-# - Flower (Celery): http://localhost:5555 (con --profile tools)
-# - pgAdmin: http://localhost:5050 (con --profile tools)
-#
-# ========== Tareas programadas de Celery ==========
-# - Scraper Agenda BA: Diario a las 6:00 AM (Buenos Aires)
-# - Scraper Alternativa Teatral: Diario a las 7:00 AM (Buenos Aires)
+# ========== Endpoints ==========
+# API:       http://localhost:8000
+# API Docs:  http://localhost:8000/docs
+# Frontend:  http://localhost:3000
+# Flower:    http://localhost:5555  (requiere --profile tools)
+# pgAdmin:   http://localhost:5050  (requiere --profile tools)
 #
 # ========== Disparar scrapers manualmente ==========
 # POST http://localhost:8000/api/v1/admin/scrape/agenda_ba
