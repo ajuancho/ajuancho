@@ -5,6 +5,8 @@ Este archivo inicializa la aplicación FastAPI y configura todos los componentes
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import asyncpg
+import redis.asyncio as aioredis
 from app.config import settings
 
 # Importar routers
@@ -67,13 +69,59 @@ async def root():
 async def health_check():
     """
     Endpoint para verificar el estado de salud de la aplicación.
-    Útil para balanceadores de carga y sistemas de monitoreo.
+    Conecta con PostgreSQL, verifica pgvector y hace ping a Redis.
     """
-    return {
-        "status": "healthy",
-        "database": "connected",  # TODO: Verificar conexión real
-        "cache": "connected"  # TODO: Verificar conexión real
+    result = {
+        "status": "ok",
+        "database": "disconnected",
+        "pgvector": "not installed",
+        "redis": "disconnected",
+        "version": "0.1.0",
     }
+
+    # Verificar PostgreSQL y pgvector
+    try:
+        conn = await asyncpg.connect(
+            host=settings.POSTGRES_SERVER,
+            port=settings.POSTGRES_PORT,
+            user=settings.POSTGRES_USER,
+            password=settings.POSTGRES_PASSWORD,
+            database=settings.POSTGRES_DB,
+        )
+        try:
+            result["database"] = "connected"
+            # Verificar que la extensión pgvector esté instalada
+            row = await conn.fetchval(
+                "SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector')"
+            )
+            if row:
+                result["pgvector"] = "installed"
+        finally:
+            await conn.close()
+    except Exception:
+        result["status"] = "degraded"
+
+    # Verificar Redis
+    try:
+        r = aioredis.Redis(
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            password=settings.REDIS_PASSWORD or None,
+            decode_responses=True,
+        )
+        try:
+            if await r.ping():
+                result["redis"] = "connected"
+        finally:
+            await r.aclose()
+    except Exception:
+        result["status"] = "degraded"
+
+    # Solo "ok" si todo está conectado
+    if result["database"] != "connected" or result["redis"] != "connected":
+        result["status"] = "degraded"
+
+    return result
 
 # Registrar routers
 app.include_router(admin.router, prefix="/api/v1")
