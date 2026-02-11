@@ -10,7 +10,7 @@ import redis.asyncio as aioredis
 from app.config import settings
 
 # Importar routers
-from app.routes import admin
+from app.routes import admin, events
 # from app.routes import usuarios, propiedades, busqueda
 
 # Inicializar la aplicación FastAPI
@@ -125,6 +125,7 @@ async def health_check():
 
 # Registrar routers
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(events.router, prefix="/api/v1")
 # app.include_router(usuarios.router, prefix="/api/v1/usuarios", tags=["usuarios"])
 # app.include_router(propiedades.router, prefix="/api/v1/propiedades", tags=["propiedades"])
 # app.include_router(busqueda.router, prefix="/api/v1/busqueda", tags=["busqueda"])
