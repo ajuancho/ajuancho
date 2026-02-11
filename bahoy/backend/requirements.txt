@@ -16,6 +16,7 @@ redis==5.0.1                 # Cliente de Redis para cache
 hiredis==2.3.2               # Parser rápido para Redis
 
 # ========== Web Scraping ==========
+scrapy==2.11.0               # Framework de web scraping robusto
 beautifulsoup4==4.12.3       # Parsing de HTML y XML
 lxml==5.1.0                  # Parser XML/HTML rápido
 requests==2.31.0             # Cliente HTTP simple
