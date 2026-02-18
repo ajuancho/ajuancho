@@ -1,0 +1,60 @@
+# ========== Backend .dockerignore ==========
+# Excluye archivos innecesarios del contexto de construcción de Docker.
+# Esto reduce el tamaño del contexto y acelera los builds.
+
+# ========== Python ==========
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+.Python
+
+# ========== Entornos virtuales ==========
+.venv/
+venv/
+env/
+ENV/
+.env
+
+# ========== Variables de entorno (no incluir secretos) ==========
+.env.*
+!.env.example
+
+# ========== Logs ==========
+logs/
+*.log
+
+# ========== Testing ==========
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+
+# ========== Build artifacts ==========
+dist/
+build/
+*.egg-info/
+*.egg
+
+# ========== Git ==========
+.git/
+.gitignore
+
+# ========== IDE y editores ==========
+.idea/
+.vscode/
+*.swp
+*.swo
+*.DS_Store
+
+# ========== Documentación ==========
+README.md
+CELERY_SETUP.md
+*.md
+
+# ========== Tests (no necesarios en producción) ==========
+tests/
