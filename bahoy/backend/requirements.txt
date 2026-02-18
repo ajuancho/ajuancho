@@ -35,6 +35,7 @@ sentence-transformers==2.3.1 # Embeddings de oraciones
 torch==2.2.0                 # PyTorch para modelos de ML
 spacy==3.7.2                 # NLP industrial
 langdetect==1.0.9            # Detección de idioma
+# Modelo spaCy para español (instalar con: python -m spacy download es_core_news_lg)
 
 # ========== Procesamiento de Datos ==========
 pandas==2.2.0                # Manipulación de datos
