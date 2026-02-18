@@ -1,0 +1,42 @@
+# ========== Frontend .dockerignore ==========
+# Excluye archivos innecesarios del contexto de construcción de Docker.
+# Esto reduce el tamaño del contexto (node_modules puede ser muy grande)
+# y acelera los builds.
+
+# ========== Node.js ==========
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ========== Next.js ==========
+.next/
+out/
+
+# ========== Variables de entorno (no incluir secretos) ==========
+.env
+.env.*
+!.env.example
+
+# ========== Logs ==========
+*.log
+logs/
+
+# ========== Git ==========
+.git/
+.gitignore
+
+# ========== IDE y editores ==========
+.idea/
+.vscode/
+*.swp
+*.swo
+*.DS_Store
+
+# ========== Testing ==========
+coverage/
+.nyc_output/
+
+# ========== Documentación ==========
+README.md
+*.md
