@@ -4,7 +4,9 @@ Modelo principal que representa los eventos culturales de Buenos Aires.
 Incluye soporte para búsqueda vectorial mediante pgvector.
 """
 
+import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
@@ -47,7 +49,7 @@ class Event(Base, UUIDMixin, TimestampMixin):
     )
 
     # FK a la categoría principal del evento (ej: "Teatro", "Música")
-    categoria_id: Mapped[str | None] = mapped_column(
+    categoria_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("categories.id"),
         nullable=True,
@@ -72,20 +74,20 @@ class Event(Base, UUIDMixin, TimestampMixin):
     )
 
     # FK al lugar donde se realiza el evento
-    venue_id: Mapped[str | None] = mapped_column(
+    venue_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("venues.id"),
         nullable=True,
     )
 
     # Precio mínimo de entrada (0 si es gratuito)
-    precio_min: Mapped[float | None] = mapped_column(
+    precio_min: Mapped[Decimal | None] = mapped_column(
         Numeric(10, 2),
         nullable=True,
     )
 
     # Precio máximo de entrada
-    precio_max: Mapped[float | None] = mapped_column(
+    precio_max: Mapped[Decimal | None] = mapped_column(
         Numeric(10, 2),
         nullable=True,
     )
@@ -117,13 +119,14 @@ class Event(Base, UUIDMixin, TimestampMixin):
 
     # Vector de embedding de 384 dimensiones para búsqueda semántica y recomendaciones.
     # Se genera a partir del título + descripción usando un modelo de sentence-transformers.
-    embedding = mapped_column(
+    # Typed as list[float] para compatibilidad con sentence-transformers.
+    embedding: Mapped[list[float] | None] = mapped_column(
         Vector(EMBEDDING_DIMENSION),
         nullable=True,
     )
 
     # FK a la fuente de donde se obtuvo el evento (scraper)
-    source_id: Mapped[str | None] = mapped_column(
+    source_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("sources.id"),
         nullable=True,

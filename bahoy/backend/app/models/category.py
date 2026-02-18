@@ -3,6 +3,8 @@ Bahoy - Modelo Category (Categorías jerárquicas)
 Representa las categorías de eventos con soporte para subcategorías anidadas.
 """
 
+import uuid
+
 from sqlalchemy import ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -25,7 +27,7 @@ class Category(Base, UUIDMixin):
     )
 
     # FK a la categoría padre (NULL si es categoría raíz)
-    parent_id: Mapped[str | None] = mapped_column(
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("categories.id"),
         nullable=True,
