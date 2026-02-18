@@ -83,6 +83,19 @@ bahoy/
    ```
 
 4. **Verificar que todo está funcionando**
+   ```bash
+   curl http://localhost:8000/health
+   ```
+   Respuesta esperada cuando todo está OK:
+   ```json
+   {
+     "status": "ok",
+     "database": "connected",
+     "pgvector": "installed",
+     "redis": "connected",
+     "version": "0.1.0"
+   }
+   ```
    - Backend API: http://localhost:8000
    - Documentación API: http://localhost:8000/docs
    - Frontend: http://localhost:3000
