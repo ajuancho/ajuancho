@@ -10,7 +10,7 @@ import redis.asyncio as aioredis
 from app.config import settings
 
 # Importar routers
-from app.routes import admin, barrios, categories, search, stats, users, venues
+from app.routes import admin, barrios, categories, recommendations, search, stats, users, venues
 # from app.routes import propiedades, busqueda
 
 # Inicializar la aplicación FastAPI
@@ -131,6 +131,7 @@ app.include_router(venues.router, prefix="/api")
 app.include_router(barrios.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
+app.include_router(recommendations.router, prefix="/api")
 # app.include_router(propiedades.router, prefix="/api/v1/propiedades", tags=["propiedades"])
 # app.include_router(busqueda.router, prefix="/api/v1/busqueda", tags=["busqueda"])
 
