@@ -2,11 +2,12 @@
 
 import { cn } from '@/lib/utils'
 
-type DateOption = 'hoy' | 'manana' | 'semana' | 'mes' | ''
+export type DateOption = 'hoy' | 'manana' | 'finde' | 'semana' | 'mes' | ''
 
-const DATE_OPTIONS: Array<{ value: DateOption; label: string }> = [
+const DATE_OPTIONS: Array<{ value: Exclude<DateOption, ''>; label: string }> = [
   { value: 'hoy',    label: 'Hoy' },
   { value: 'manana', label: 'Mañana' },
+  { value: 'finde',  label: 'Este fin de semana' },
   { value: 'semana', label: 'Esta semana' },
   { value: 'mes',    label: 'Este mes' },
 ]
@@ -14,9 +15,20 @@ const DATE_OPTIONS: Array<{ value: DateOption; label: string }> = [
 interface DateFilterProps {
   selected: DateOption
   onChange: (value: DateOption) => void
+  fechaDesde?: string
+  fechaHasta?: string
+  onFechaDesde?: (date: string) => void
+  onFechaHasta?: (date: string) => void
 }
 
-export default function DateFilter({ selected, onChange }: DateFilterProps) {
+export default function DateFilter({
+  selected,
+  onChange,
+  fechaDesde = '',
+  fechaHasta = '',
+  onFechaDesde,
+  onFechaHasta,
+}: DateFilterProps) {
   return (
     <div>
       <p className="font-sans font-semibold text-secondary-800 text-sm mb-3">Cuándo</p>
@@ -36,6 +48,39 @@ export default function DateFilter({ selected, onChange }: DateFilterProps) {
           </button>
         ))}
       </div>
+
+      {/* Optional date range picker */}
+      {onFechaDesde && onFechaHasta && (
+        <div className="mt-4 space-y-2">
+          <p className="text-xs text-gray-400 font-medium">O elegí un rango</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Desde</label>
+              <input
+                type="date"
+                value={fechaDesde}
+                onChange={(e) => {
+                  onFechaDesde(e.target.value)
+                  onChange('')
+                }}
+                className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 focus:outline-none focus:border-primary-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Hasta</label>
+              <input
+                type="date"
+                value={fechaHasta}
+                onChange={(e) => {
+                  onFechaHasta(e.target.value)
+                  onChange('')
+                }}
+                className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 focus:outline-none focus:border-primary-400"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

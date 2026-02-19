@@ -2,33 +2,60 @@
 
 import { X } from 'lucide-react'
 import CategoryFilter from './CategoryFilter'
-import DateFilter from './DateFilter'
-import PriceFilter from './PriceFilter'
+import DateFilter, { type DateOption } from './DateFilter'
+import BarrioFilter from './BarrioFilter'
+import PriceRangeFilter from './PriceRangeFilter'
+import TagsFilter from './TagsFilter'
 import Button from '@/components/ui/Button'
 
 export interface Filters {
   categorias: string[]
-  fecha: 'hoy' | 'manana' | 'semana' | 'mes' | ''
+  fecha: DateOption
   precio: 'gratis' | 'pagos' | ''
+  barrio: string
+  tags: string[]
+  precio_min: number
+  precio_max: number
+  solo_gratis: boolean
+  fecha_desde: string
+  fecha_hasta: string
 }
 
-const EMPTY_FILTERS: Filters = {
+export const EMPTY_FILTERS: Filters = {
   categorias: [],
   fecha: '',
   precio: '',
+  barrio: '',
+  tags: [],
+  precio_min: 0,
+  precio_max: 10000,
+  solo_gratis: false,
+  fecha_desde: '',
+  fecha_hasta: '',
 }
 
 interface FilterSidebarProps {
   filters: Filters
   onChange: (filters: Filters) => void
   className?: string
+  categoryCounts?: Record<string, number>
 }
 
-export default function FilterSidebar({ filters, onChange, className }: FilterSidebarProps) {
+export default function FilterSidebar({
+  filters,
+  onChange,
+  className,
+  categoryCounts,
+}: FilterSidebarProps) {
   const activeCount =
     filters.categorias.length +
     (filters.fecha ? 1 : 0) +
-    (filters.precio ? 1 : 0)
+    (filters.barrio ? 1 : 0) +
+    filters.tags.length +
+    (filters.solo_gratis ? 1 : 0) +
+    (filters.precio && !filters.solo_gratis ? 1 : 0) +
+    (filters.fecha_desde || filters.fecha_hasta ? 1 : 0) +
+    (filters.precio_min > 0 || filters.precio_max < 10000 ? 1 : 0)
 
   const handleReset = () => onChange(EMPTY_FILTERS)
 
@@ -49,32 +76,59 @@ export default function FilterSidebar({ filters, onChange, className }: FilterSi
           )}
         </div>
 
-        {/* Divider */}
         <hr className="border-gray-100" />
 
+        {/* Categorías */}
         <CategoryFilter
           selected={filters.categorias}
           onChange={(categorias) => onChange({ ...filters, categorias })}
+          counts={categoryCounts}
         />
 
         <hr className="border-gray-100" />
 
+        {/* Fechas */}
         <DateFilter
           selected={filters.fecha}
           onChange={(fecha) => onChange({ ...filters, fecha })}
+          fechaDesde={filters.fecha_desde}
+          fechaHasta={filters.fecha_hasta}
+          onFechaDesde={(fecha_desde) => onChange({ ...filters, fecha_desde, fecha: '' })}
+          onFechaHasta={(fecha_hasta) => onChange({ ...filters, fecha_hasta, fecha: '' })}
         />
 
         <hr className="border-gray-100" />
 
-        <PriceFilter
-          selected={filters.precio}
-          onChange={(precio) => onChange({ ...filters, precio })}
+        {/* Barrios */}
+        <BarrioFilter
+          selected={filters.barrio}
+          onChange={(barrio) => onChange({ ...filters, barrio })}
+        />
+
+        <hr className="border-gray-100" />
+
+        {/* Precio */}
+        <PriceRangeFilter
+          min={filters.precio_min}
+          max={filters.precio_max}
+          soloGratis={filters.solo_gratis}
+          onChange={(precio_min, precio_max, solo_gratis) =>
+            onChange({ ...filters, precio_min, precio_max, solo_gratis })
+          }
+        />
+
+        <hr className="border-gray-100" />
+
+        {/* Tags */}
+        <TagsFilter
+          selected={filters.tags}
+          onChange={(tags) => onChange({ ...filters, tags })}
         />
 
         {activeCount > 0 && (
           <>
             <hr className="border-gray-100" />
-            <Button variant="primary" size="sm" className="w-full" onClick={handleReset}>
+            <Button variant="outline" size="sm" className="w-full" onClick={handleReset}>
               Limpiar filtros
             </Button>
           </>
