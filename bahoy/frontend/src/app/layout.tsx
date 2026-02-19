@@ -1,45 +1,42 @@
-/**
- * Bahoy - Layout principal de la aplicación
- * Este componente envuelve todas las páginas de la aplicación.
- */
-
 import type { Metadata } from 'next'
-import { Inter, Poppins } from 'next/font/google'
+import { Inter, Playfair_Display } from 'next/font/google'
 import './globals.css'
+import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
 
-// Configurar fuentes de Google
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
   display: 'swap',
 })
 
-const poppins = Poppins({
+const playfair = Playfair_Display({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-poppins',
+  variable: '--font-playfair',
   display: 'swap',
 })
 
-// Metadata de la aplicación para SEO
 export const metadata: Metadata = {
-  title: 'Bahoy - Encuentra tu hogar ideal',
-  description: 'Plataforma inteligente de búsqueda de propiedades con IA',
-  keywords: ['propiedades', 'casas', 'apartamentos', 'arriendo', 'venta', 'inmobiliaria'],
+  title: {
+    default: 'Bahoy - Eventos en Buenos Aires',
+    template: '%s | Bahoy',
+  },
+  description: 'Descubrí los mejores eventos culturales, musicales y de entretenimiento en Buenos Aires.',
+  keywords: ['eventos', 'buenos aires', 'teatro', 'música', 'cultura', 'entretenimiento', 'agenda'],
   authors: [{ name: 'Equipo Bahoy' }],
   creator: 'Bahoy',
   openGraph: {
     type: 'website',
-    locale: 'es_ES',
-    url: 'https://bahoy.com',
-    title: 'Bahoy - Encuentra tu hogar ideal',
-    description: 'Plataforma inteligente de búsqueda de propiedades con IA',
+    locale: 'es_AR',
+    url: 'https://bahoy.com.ar',
+    title: 'Bahoy - Eventos en Buenos Aires',
+    description: 'Descubrí los mejores eventos culturales, musicales y de entretenimiento en Buenos Aires.',
     siteName: 'Bahoy',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Bahoy - Encuentra tu hogar ideal',
-    description: 'Plataforma inteligente de búsqueda de propiedades con IA',
+    title: 'Bahoy - Eventos en Buenos Aires',
+    description: 'Descubrí los mejores eventos culturales, musicales y de entretenimiento en Buenos Aires.',
   },
 }
 
@@ -49,18 +46,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className={`${inter.variable} ${poppins.variable}`}>
-      <body className="font-sans antialiased bg-gray-50">
-        {/* Header - Agregar cuando esté disponible */}
-        {/* <Header /> */}
-
-        {/* Contenido principal */}
-        <main className="min-h-screen">
+    <html lang="es-AR" className={`${inter.variable} ${playfair.variable}`}>
+      <body className="font-sans antialiased bg-accent flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-1">
           {children}
         </main>
-
-        {/* Footer - Agregar cuando esté disponible */}
-        {/* <Footer /> */}
+        <Footer />
       </body>
     </html>
   )
