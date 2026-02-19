@@ -3,6 +3,7 @@ Bahoy - Servicio de Recomendaciones
 Motor de recomendación de eventos culturales.
 
 Fase 1: Filtrado explícito por preferencias declaradas del usuario.
+Fase 2: Recomendación basada en contenido (comportamiento implícito + embeddings).
 """
 
 import uuid
@@ -10,6 +11,7 @@ from collections import Counter
 from datetime import datetime, time, timedelta, timezone
 from typing import Any
 
+import numpy as np
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -20,11 +22,24 @@ from app.models.interaction import Interaction, InteractionType
 from app.models.user import User
 from app.models.venue import Venue
 
+# Pesos de interacción para el cálculo del perfil implícito (Fase 2).
+# Refleja el grado de intención: guardar > hacer clic > ver.
+_PESOS_CONTENIDO: dict[InteractionType, float] = {
+    InteractionType.GUARDADO: 3.0,
+    InteractionType.ASISTIO: 3.0,
+    InteractionType.COMPARTIDO: 2.0,
+    InteractionType.CLIC: 2.0,
+    InteractionType.VISTA: 1.0,
+}
+
 
 class RecommenderService:
     """
     Motor de recomendaciones de eventos culturales de Buenos Aires.
+
     Fase 1: filtrado explícito basado en preferencias declaradas del usuario.
+    Fase 2: recomendación basada en contenido usando embeddings y pgvector.
+    Híbrido: combina Fase 1 y Fase 2 con pesos iguales.
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -343,6 +358,155 @@ class RecommenderService:
             for e in eventos
         ]
 
+    async def recomendar_basado_en_contenido(
+        self, user_id: str, limite: int = 10
+    ) -> list[dict[str, Any]]:
+        """
+        Recomienda eventos similares a los que el usuario ha interactuado.
+
+        Algoritmo:
+        1. Obtener eventos con los que el usuario interactuó (vio, guardó, etc.)
+        2. Ponderar por tipo de interacción:
+           - guardado/asistió: peso 3
+           - compartido/clic:  peso 2
+           - vista:            peso 1
+        3. Calcular el "perfil de gustos" del usuario:
+           - Promedio ponderado de embeddings de sus eventos
+        4. Buscar eventos similares al perfil usando pgvector
+        5. Filtrar los que ya vio
+        6. Aplicar diversificación
+        """
+        # Paso 1: IDs de todos los eventos con los que el usuario interactuó.
+        result = await self.db.execute(
+            select(Interaction.event_id)
+            .where(Interaction.user_id == uuid.UUID(user_id))
+            .distinct()
+        )
+        ids_interactuados = [str(row.event_id) for row in result.all()]
+
+        if not ids_interactuados:
+            return await self.recomendar_populares(limite)
+
+        # Paso 2 y 3: Calcular perfil de gustos del usuario.
+        perfil = await self.calcular_perfil_usuario(user_id)
+        if perfil is None:
+            # Sin embeddings → fallback a populares
+            return await self.recomendar_populares(limite)
+
+        # Paso 4 y 5: Buscar eventos cercanos al perfil excluyendo ya vistos.
+        candidatos = await self.buscar_por_perfil(perfil, ids_interactuados)
+
+        if not candidatos:
+            return await self.recomendar_populares(limite)
+
+        # Paso 6: Diversificar (máximo 3 eventos por categoría).
+        scored = [
+            (0.0, evento, "Basado en tus intereses recientes")
+            for evento in candidatos
+        ]
+        return self._diversificar(scored, max_por_categoria=3, limite=limite)
+
+    async def recomendar_hibrido(
+        self, user_id: str, limite: int = 10
+    ) -> list[dict[str, Any]]:
+        """
+        Combina filtrado explícito (Fase 1) con basado en contenido (Fase 2).
+
+        - 50 % de preferencias explícitas (recomendar_para_usuario)
+        - 50 % de comportamiento implícito (recomendar_basado_en_contenido)
+        - Deduplica y diversifica el resultado final
+        """
+        mitad = max(1, limite // 2)
+        resto = limite - mitad
+
+        # Ejecutar ambas fases
+        explicitas = await self.recomendar_para_usuario(user_id, mitad)
+        contenido = await self.recomendar_basado_en_contenido(user_id, resto)
+
+        # Deduplicar: priorizar las explícitas
+        ids_incluidos = {item["event"]["id"] for item in explicitas}
+        contenido_nuevo = [
+            item for item in contenido if item["event"]["id"] not in ids_incluidos
+        ]
+
+        combinados = explicitas + contenido_nuevo
+
+        # Diversificación final sobre los resultados ya serializados
+        return self._diversificar_resultados(
+            combinados, max_por_categoria=3, limite=limite
+        )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Helpers públicos de Fase 2
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def calcular_perfil_usuario(self, user_id: str) -> list[float] | None:
+        """
+        Genera un embedding que representa los gustos del usuario.
+
+        Calcula el promedio ponderado de los embeddings de los eventos con
+        los que el usuario interactuó, usando los pesos de ``_PESOS_CONTENIDO``.
+        Retorna ``None`` si el usuario no tiene interacciones o ninguno de los
+        eventos interactuados tiene embedding almacenado.
+        """
+        result = await self.db.execute(
+            select(Interaction.tipo, Event.embedding)
+            .join(Event, Interaction.event_id == Event.id)
+            .where(
+                Interaction.user_id == uuid.UUID(user_id),
+                Event.embedding.isnot(None),
+            )
+        )
+        filas = result.all()
+
+        if not filas:
+            return None
+
+        suma_pesos = 0.0
+        acumulado: np.ndarray | None = None
+
+        for tipo, embedding in filas:
+            peso = _PESOS_CONTENIDO.get(tipo, 1.0)
+            vec = np.array(embedding, dtype=float)
+            acumulado = vec * peso if acumulado is None else acumulado + vec * peso
+            suma_pesos += peso
+
+        if suma_pesos == 0.0 or acumulado is None:
+            return None
+
+        return (acumulado / suma_pesos).tolist()
+
+    async def buscar_por_perfil(
+        self, perfil: list[float], excluir: list[str]
+    ) -> list[Event]:
+        """
+        Busca eventos cercanos al perfil excluyendo ya vistos.
+
+        Ordena los eventos futuros con embedding por distancia coseno al
+        vector ``perfil`` y excluye los IDs presentes en ``excluir``.
+        Recupera hasta 50 candidatos para que la capa de diversificación
+        tenga suficiente material.
+        """
+        ahora = datetime.now(timezone.utc)
+        excluir_uuids = [uuid.UUID(eid) for eid in excluir]
+
+        query = (
+            select(Event)
+            .options(selectinload(Event.venue), selectinload(Event.categoria))
+            .where(
+                Event.fecha_inicio >= ahora,
+                Event.embedding.isnot(None),
+            )
+            .order_by(Event.embedding.cosine_distance(perfil))
+            .limit(50)
+        )
+
+        if excluir_uuids:
+            query = query.where(Event.id.notin_(excluir_uuids))
+
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
     # ─────────────────────────────────────────────────────────────────────────
     # Helpers privados
     # ─────────────────────────────────────────────────────────────────────────
@@ -463,6 +627,31 @@ class RecommenderService:
                 resultado.append(
                     {"event": self._serializar_evento(event), "razon": razon}
                 )
+
+        return resultado
+
+    def _diversificar_resultados(
+        self,
+        resultados: list[dict[str, Any]],
+        max_por_categoria: int,
+        limite: int,
+    ) -> list[dict[str, Any]]:
+        """
+        Diversifica una lista de resultados ya serializados (dicts con clave
+        ``"event"``) limitando cuántos eventos de la misma categoría aparecen.
+
+        Complementa a ``_diversificar``, que opera sobre tuplas ``(score, Event, razon)``.
+        """
+        contador: Counter[str] = Counter()
+        resultado: list[dict[str, Any]] = []
+
+        for item in resultados:
+            if len(resultado) >= limite:
+                break
+            cat = item["event"].get("categoria") or "sin_categoria"
+            if contador[cat] < max_por_categoria:
+                contador[cat] += 1
+                resultado.append(item)
 
         return resultado
 

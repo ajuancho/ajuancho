@@ -18,7 +18,7 @@ router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 @router.get("/{user_id}", response_model=list[dict[str, Any]])
 async def get_recommendations(
     user_id: uuid.UUID,
-    tipo: Literal["personalizadas", "populares", "similares"] = Query(
+    tipo: Literal["personalizadas", "populares", "similares", "contenido", "hibrido"] = Query(
         default="personalizadas",
         description="Tipo de recomendación",
     ),
@@ -43,6 +43,10 @@ async def get_recommendations(
     - **populares**: eventos más populares por interacciones (fallback para
       usuarios sin historial o sin preferencias)
     - **similares**: eventos similares a uno dado; requiere `event_id`
+    - **contenido**: basadas en el comportamiento implícito del usuario
+      (embeddings de eventos vistos/guardados/clicados ponderados por tipo)
+    - **hibrido**: combina preferencias explícitas (50 %) + comportamiento
+      implícito (50 %) con diversificación final
 
     Cada resultado incluye el evento y la razón por la que se recomienda:
     ```json
@@ -64,6 +68,12 @@ async def get_recommendations(
 
     if tipo == "populares":
         return await service.recomendar_populares(limite)
+
+    if tipo == "contenido":
+        return await service.recomendar_basado_en_contenido(str(user_id), limite)
+
+    if tipo == "hibrido":
+        return await service.recomendar_hibrido(str(user_id), limite)
 
     # tipo == "personalizadas"
     return await service.recomendar_para_usuario(str(user_id), limite)
