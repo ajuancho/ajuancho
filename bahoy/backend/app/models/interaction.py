@@ -5,6 +5,7 @@ el sistema de recomendaciones.
 """
 
 import enum
+import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, ForeignKey, Index
@@ -33,14 +34,14 @@ class Interaction(Base, UUIDMixin):
     __tablename__ = "interactions"
 
     # FK al usuario que realizó la interacción
-    user_id: Mapped[str] = mapped_column(
+    user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id"),
         nullable=False,
     )
 
     # FK al evento con el que interactuó el usuario
-    event_id: Mapped[str] = mapped_column(
+    event_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("events.id"),
         nullable=False,
