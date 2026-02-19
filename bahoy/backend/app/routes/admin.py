@@ -1,13 +1,16 @@
 """
 Bahoy - Rutas de administración
-Este archivo contiene endpoints para tareas administrativas como scrapers.
+Este archivo contiene endpoints para tareas administrativas como scrapers y métricas.
 """
 
 from typing import Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from celery.result import AsyncResult
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database import get_db
+from app.services.metrics import MetricsService
 from app.tasks import (
     task_scrape_agenda_ba,
     task_scrape_alternativa_teatral,
@@ -143,6 +146,36 @@ async def list_available_scrapers() -> Dict[str, Any]:
         ],
         "total": 3
     }
+
+
+# ========== Endpoints de Métricas ==========
+
+@router.get("/metrics")
+async def get_metrics(
+    periodo: int = Query(
+        default=30,
+        ge=1,
+        le=365,
+        description="Período en días a analizar",
+    ),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Devuelve el reporte completo de métricas del sistema de recomendaciones.
+
+    Métricas incluidas:
+    - **CTR**: ratio de clics sobre recomendaciones mostradas
+    - **tasa_guardado**: porcentaje de recomendaciones que se guardan
+    - **diversidad**: variedad de categorías en las recomendaciones (0-1)
+    - **cobertura**: porcentaje del catálogo que el sistema recomienda (0-1)
+    - **precision_at_10**: precisión en las 10 primeras recomendaciones
+
+    Args:
+        periodo: Número de días hacia atrás a analizar (1-365, defecto: 30)
+    """
+    service = MetricsService(db)
+    reporte = await service.generar_reporte(periodo_dias=periodo)
+    return reporte
 
 
 # ========== Endpoint de Prueba ==========
