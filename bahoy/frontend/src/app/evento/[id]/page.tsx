@@ -1,73 +1,150 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useParams, notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import type { Metadata } from 'next'
 import Link from 'next/link'
-import EventDetail from '@/components/events/EventDetail'
-import Loading from '@/components/ui/Loading'
+import { ChevronRight, Home, ArrowLeft } from 'lucide-react'
 import { eventsApi } from '@/lib/api'
-import type { EventDetail as EventDetailType } from '@/lib/api'
+import EventDetail from '@/components/events/EventDetail'
 
-export default function EventoPage() {
-  const { id } = useParams<{ id: string }>()
-  const [event, setEvent] = useState<EventDetailType | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+type Props = {
+  params: { id: string }
+}
 
-  useEffect(() => {
-    const eventId = Number(id)
-    if (isNaN(eventId)) {
-      setError(true)
-      setLoading(false)
-      return
+// ─── Dynamic SEO metadata ────────────────────────────────────────────────────
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const id = Number(params.id)
+  if (isNaN(id)) return { title: 'Evento no encontrado' }
+
+  try {
+    const event = await eventsApi.getById(id)
+    return {
+      title: event.titulo,
+      description: event.descripcion,
+      openGraph: {
+        title: `${event.titulo} | Bahoy`,
+        description: event.descripcion,
+        images: event.imagen_url
+          ? [{ url: event.imagen_url, width: 1200, height: 630, alt: event.titulo }]
+          : [],
+        type: 'article',
+        locale: 'es_AR',
+        siteName: 'Bahoy',
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: event.titulo,
+        description: event.descripcion,
+        images: event.imagen_url ? [event.imagen_url] : [],
+      },
     }
+  } catch {
+    return { title: 'Evento | Bahoy' }
+  }
+}
 
-    eventsApi
-      .getById(eventId)
-      .then(setEvent)
-      .catch(() => setError(true))
-      .finally(() => setLoading(false))
-  }, [id])
+// ─── Page ────────────────────────────────────────────────────────────────────
 
-  if (loading) {
-    return <Loading fullPage text="Cargando evento..." />
+export default async function EventoPage({ params }: Props) {
+  const id = Number(params.id)
+  if (isNaN(id)) return <EventoNoEncontrado />
+
+  let event
+  try {
+    event = await eventsApi.getById(id)
+  } catch {
+    return <EventoNoEncontrado />
   }
 
-  if (error || !event) {
-    return (
-      <div className="container-custom py-16 text-center">
-        <p className="text-5xl mb-4">😕</p>
-        <h1 className="font-display text-2xl font-bold text-secondary-800 mb-2">
-          Evento no encontrado
-        </h1>
-        <p className="font-sans text-gray-500 mb-6">
-          El evento que buscás no existe o fue removido.
-        </p>
-        <Link href="/explorar">
-          <span className="btn-primary inline-flex items-center gap-2">
-            <ArrowLeft className="w-4 h-4" />
-            Explorar eventos
-          </span>
-        </Link>
-      </div>
-    )
+  // Fetch similar events by same category (best-effort)
+  let eventosSimilares = []
+  try {
+    const categoria = event.categorias?.[0]?.nombre
+    const { items } = await eventsApi.list({
+      categorias: categoria ? [categoria] : undefined,
+      size: 5,
+    })
+    eventosSimilares = items.filter((e) => e.id !== event.id).slice(0, 4)
+  } catch {
+    // silently ignore — section simply won't render
   }
+
+  const categoria = event.categorias?.[0]?.nombre
 
   return (
     <div className="container-custom py-8">
-      {/* Breadcrumb */}
-      <nav className="mb-6">
-        <Link
-          href="/explorar"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-600 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver a explorar
-        </Link>
+      {/* ── Breadcrumb ───────────────────────────────────────────── */}
+      <nav aria-label="Breadcrumb" className="mb-6">
+        <ol className="flex items-center gap-1.5 text-sm text-gray-500 flex-wrap">
+          <li>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1 hover:text-primary-600 transition-colors"
+            >
+              <Home className="w-3.5 h-3.5" />
+              Inicio
+            </Link>
+          </li>
+          <li aria-hidden>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+          </li>
+          {categoria ? (
+            <>
+              <li>
+                <Link
+                  href={`/explorar?categoria=${encodeURIComponent(categoria)}`}
+                  className="capitalize hover:text-primary-600 transition-colors"
+                >
+                  {categoria}
+                </Link>
+              </li>
+              <li aria-hidden>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+              </li>
+            </>
+          ) : (
+            <>
+              <li>
+                <Link href="/explorar" className="hover:text-primary-600 transition-colors">
+                  Explorar
+                </Link>
+              </li>
+              <li aria-hidden>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+              </li>
+            </>
+          )}
+          <li
+            aria-current="page"
+            className="text-secondary-800 font-medium truncate max-w-[180px] sm:max-w-xs"
+            title={event.titulo}
+          >
+            {event.titulo}
+          </li>
+        </ol>
       </nav>
 
-      <EventDetail event={event} />
+      <EventDetail event={event} eventosSimilares={eventosSimilares} />
+    </div>
+  )
+}
+
+// ─── 404 / error state ───────────────────────────────────────────────────────
+
+function EventoNoEncontrado() {
+  return (
+    <div className="container-custom py-16 text-center">
+      <p className="text-5xl mb-4">😕</p>
+      <h1 className="font-display text-2xl font-bold text-secondary-800 mb-2">
+        Evento no encontrado
+      </h1>
+      <p className="font-sans text-gray-500 mb-6">
+        El evento que buscás no existe o fue removido.
+      </p>
+      <Link href="/explorar">
+        <span className="btn-primary inline-flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Explorar eventos
+        </span>
+      </Link>
     </div>
   )
 }

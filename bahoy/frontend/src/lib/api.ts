@@ -30,11 +30,14 @@ export interface EventDetail extends EventSummary {
   descripcion_larga?: string
   url_entradas?: string
   url_fuente?: string
+  tags?: string[]
   venue?: {
     nombre: string
     direccion?: string
     barrio?: string
     ciudad?: string
+    lat?: number
+    lng?: number
   }
 }
 
