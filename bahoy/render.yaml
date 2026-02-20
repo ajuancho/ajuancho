@@ -1,0 +1,193 @@
+services:
+  # ========== Backend API ==========
+  - type: web
+    name: bahoy-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: POSTGRES_SERVER
+        fromDatabase:
+          name: bahoy-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: bahoy-db
+          property: port
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: bahoy-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: bahoy-db
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: bahoy-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          name: bahoy-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: bahoy-redis
+          type: redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          name: bahoy-redis
+          type: redis
+          property: password
+      - key: LOG_LEVEL
+        value: INFO
+      - key: ALLOWED_ORIGINS
+        value: https://bahoy-frontend.onrender.com
+      - key: NLP_MODEL_NAME
+        value: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+      - key: NLP_DEVICE
+        value: cpu
+      - key: CACHE_TTL
+        value: 3600
+      - key: CACHE_ENABLED
+        value: true
+
+  # ========== Frontend Next.js ==========
+  - type: web
+    name: bahoy-frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: https://bahoy-backend.onrender.com
+
+  # ========== Celery Worker ==========
+  - type: worker
+    name: bahoy-celery-worker
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A app.celery_app worker --loglevel=info --concurrency=2
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: POSTGRES_SERVER
+        fromDatabase:
+          name: bahoy-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: bahoy-db
+          property: port
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: bahoy-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: bahoy-db
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: bahoy-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          name: bahoy-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: bahoy-redis
+          type: redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          name: bahoy-redis
+          type: redis
+          property: password
+      - key: SECRET_KEY
+        fromService:
+          name: bahoy-backend
+          type: web
+          envVarKey: SECRET_KEY
+
+  # ========== Celery Beat Scheduler ==========
+  - type: worker
+    name: bahoy-celery-beat
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A app.celery_app beat --loglevel=info
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: POSTGRES_SERVER
+        fromDatabase:
+          name: bahoy-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: bahoy-db
+          property: port
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: bahoy-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: bahoy-db
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: bahoy-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          name: bahoy-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: bahoy-redis
+          type: redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          name: bahoy-redis
+          type: redis
+          property: password
+      - key: SECRET_KEY
+        fromService:
+          name: bahoy-backend
+          type: web
+          envVarKey: SECRET_KEY
+
+databases:
+  # ========== PostgreSQL ==========
+  # NOTA: pgvector debe habilitarse manualmente tras la creación
+  # con: CREATE EXTENSION IF NOT EXISTS vector;
+  - name: bahoy-db
+    databaseName: bahoy_db
+    user: bahoy_user
+    plan: free
+
+  # ========== Redis ==========
+  - name: bahoy-redis
+    type: redis
+    plan: free
+    ipAllowList: []

@@ -54,6 +54,7 @@ email-validator==2.1.0.post1 # Validación de emails
 # ========== Monitoreo y Logging ==========
 loguru==0.7.2                # Logging mejorado
 sentry-sdk[fastapi]==1.40.0  # Monitoreo de errores
+prometheus-client==0.20.0    # Métricas Prometheus (endpoint /metrics)
 
 # ========== Testing ==========
 pytest==8.0.0                # Framework de testing
