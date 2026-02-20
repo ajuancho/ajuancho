@@ -6,7 +6,7 @@ import SearchBar from '@/components/search/SearchBar'
 import EventGrid from '@/components/events/EventGrid'
 import { eventsApi, type EventSummary } from '@/lib/api'
 
-export default function BuscarPage() {
+function BuscarContent() {               // ← componente interno con useSearchParams
   const searchParams = useSearchParams()
   const [query, setQuery] = useState(searchParams.get('q') ?? '')
   const [events, setEvents] = useState<EventSummary[]>([])
