@@ -58,7 +58,7 @@ prometheus-client==0.20.0    # Métricas Prometheus (endpoint /metrics)
 
 # ========== Testing ==========
 pytest==8.0.0                # Framework de testing
-pytest-asyncio==0.23.4       # Testing asíncrono
+pytest-asyncio==0.23.5       # Testing asíncrono
 pytest-cov==4.1.0            # Cobertura de código
 httpx==0.26.0                # Cliente HTTP para tests
 faker==22.6.0                # Generación de datos de prueba
