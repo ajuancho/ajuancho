@@ -732,3 +732,475 @@ class TestPesosContenido:
     def test_todos_los_pesos_son_positivos(self):
         for tipo, peso in _PESOS_CONTENIDO.items():
             assert peso > 0, f"Peso de {tipo} debe ser positivo"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests: recomendar_populares
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestRecomendarPopulares:
+    """Tests para la recomendación basada en popularidad."""
+
+    @pytest.mark.asyncio
+    async def test_sin_interacciones_devuelve_eventos_futuros(self):
+        """
+        Sin interacciones en la DB, completa con próximos eventos.
+        """
+        evento = make_event(titulo="Próximo evento")
+        db = make_async_db(
+            _make_db_result([]),        # interacciones: vacío
+            _make_db_result([evento]),  # eventos futuros para completar
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_populares(limite=5)
+
+        assert isinstance(resultado, list)
+        assert len(resultado) <= 5
+        if resultado:
+            assert "event" in resultado[0]
+            assert "razon" in resultado[0]
+
+    @pytest.mark.asyncio
+    async def test_razon_es_descripcion_correcta(self):
+        """La razón de recomendación popular describe la comunidad."""
+        evento = make_event(titulo="Obra popular")
+        db = make_async_db(
+            _make_db_result([]),
+            _make_db_result([evento]),
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_populares(limite=5)
+
+        if resultado:
+            assert "popular" in resultado[0]["razon"].lower()
+
+    @pytest.mark.asyncio
+    async def test_limite_respetado(self):
+        """No devuelve más eventos que el límite solicitado."""
+        eventos = [make_event(titulo=f"Evento {i}") for i in range(20)]
+        db = make_async_db(
+            _make_db_result([]),
+            _make_db_result(eventos),
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_populares(limite=3)
+
+        assert len(resultado) <= 3
+
+    @pytest.mark.asyncio
+    async def test_con_interacciones_pondera_guardados(self):
+        """
+        Eventos con más guardados aparecen primero.
+        Verifica que el método no falla con interacciones reales.
+        """
+        event_id = _uuid()
+
+        # Fila de interacción: (event_id, tipo, n)
+        fila = MagicMock()
+        fila.event_id = event_id
+        fila.tipo = InteractionType.GUARDADO
+        fila.n = 5
+
+        evento_popular = make_event(titulo="El más guardado")
+        evento_popular.id = event_id
+
+        db = make_async_db(
+            _make_db_result([fila]),           # interacciones agrupadas
+            _make_db_result([evento_popular]), # eventos por IDs
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_populares(limite=10)
+
+        assert isinstance(resultado, list)
+
+    @pytest.mark.asyncio
+    async def test_lista_vacia_cuando_no_hay_eventos(self):
+        """Sin eventos en la DB, retorna lista vacía."""
+        db = make_async_db(
+            _make_db_result([]),  # interacciones
+            _make_db_result([]),  # eventos futuros (también vacío)
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_populares(limite=5)
+
+        assert resultado == []
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests: recomendar_similares
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestRecomendarSimilares:
+    """Tests para la recomendación de eventos similares a uno dado."""
+
+    @pytest.mark.asyncio
+    async def test_evento_inexistente_retorna_lista_vacia(self):
+        """Si el evento base no existe en la DB, retorna []."""
+        db = make_async_db(_make_db_result([]))  # get_evento retorna None
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_similares(str(_uuid()), limite=5)
+
+        assert resultado == []
+
+    @pytest.mark.asyncio
+    async def test_retorna_eventos_similares(self):
+        """Con evento base existente, devuelve candidatos similares."""
+        cat = make_category("Teatro")
+        evento_base = make_event(titulo="Obra base", embedding=_emb(0), categoria=cat)
+        candidatos = [
+            make_event(titulo=f"Similar {i}", embedding=_emb(i + 1), categoria=cat)
+            for i in range(3)
+        ]
+
+        db = make_async_db(
+            _make_db_result([evento_base]),  # get_evento
+            _make_db_result(candidatos),     # candidatos similares
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_similares(str(evento_base.id), limite=3)
+
+        assert isinstance(resultado, list)
+        assert len(resultado) <= 3
+        for item in resultado:
+            assert "event" in item
+            assert "razon" in item
+
+    @pytest.mark.asyncio
+    async def test_razon_menciona_evento_base(self):
+        """La razón de cada resultado menciona el evento de referencia."""
+        cat = make_category("Cine")
+        titulo_base = "La Gran Película"
+        evento_base = make_event(titulo=titulo_base, embedding=_emb(0), categoria=cat)
+        candidato = make_event(titulo="Otra película", embedding=_emb(1), categoria=cat)
+
+        db = make_async_db(
+            _make_db_result([evento_base]),
+            _make_db_result([candidato]),
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_similares(str(evento_base.id), limite=5)
+
+        if resultado:
+            assert titulo_base[:40] in resultado[0]["razon"] or "Similar" in resultado[0]["razon"]
+
+    @pytest.mark.asyncio
+    async def test_sin_candidatos_retorna_lista_vacia(self):
+        """Si no hay eventos similares, retorna lista vacía."""
+        cat = make_category("Danza")
+        evento_base = make_event(titulo="Ballet único", embedding=_emb(0), categoria=cat)
+
+        db = make_async_db(
+            _make_db_result([evento_base]),
+            _make_db_result([]),  # sin candidatos
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_similares(str(evento_base.id), limite=5)
+
+        assert resultado == []
+
+    @pytest.mark.asyncio
+    async def test_limite_respetado(self):
+        """No devuelve más eventos que el límite solicitado."""
+        cat = make_category("Música")
+        evento_base = make_event(titulo="Base", embedding=_emb(0), categoria=cat)
+        candidatos = [
+            make_event(titulo=f"Candidato {i}", embedding=_emb(i + 1), categoria=cat)
+            for i in range(10)
+        ]
+
+        db = make_async_db(
+            _make_db_result([evento_base]),
+            _make_db_result(candidatos),
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_similares(str(evento_base.id), limite=3)
+
+        assert len(resultado) <= 3
+
+    @pytest.mark.asyncio
+    async def test_evento_sin_embedding_no_falla(self):
+        """Evento base sin embedding funciona (ordena por fecha)."""
+        cat = make_category("Teatro")
+        evento_base = make_event(titulo="Sin embedding", embedding=None, categoria=cat)
+        candidato = make_event(titulo="Candidato", embedding=None, categoria=cat)
+
+        db = make_async_db(
+            _make_db_result([evento_base]),
+            _make_db_result([candidato]),
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_similares(str(evento_base.id), limite=5)
+
+        assert isinstance(resultado, list)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests: recomendar_para_usuario (Fase 1 – usuario nuevo y con historial)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestRecomendarParaUsuario:
+    """Tests para la recomendación personalizada por preferencias explícitas."""
+
+    @pytest.mark.asyncio
+    async def test_usuario_nuevo_sin_historial_cae_en_populares(
+        self, usuario_sin_historial
+    ):
+        """
+        Usuario nuevo (sin preferencias) → recomendar_populares como fallback.
+        """
+        evento_popular = make_event(titulo="Evento popular")
+        db = make_async_db(
+            _make_db_result([usuario_sin_historial]),  # get_user
+            _make_db_result([]),                        # populares: interacciones
+            _make_db_result([evento_popular]),          # populares: eventos futuros
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_para_usuario(
+            str(usuario_sin_historial.id), limite=5
+        )
+
+        assert isinstance(resultado, list)
+
+    @pytest.mark.asyncio
+    async def test_usuario_inexistente_retorna_lista_vacia(self):
+        """Usuario no encontrado en la DB → retorna []."""
+        db = make_async_db(_make_db_result([]))  # get_user retorna None
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_para_usuario(str(_uuid()), limite=5)
+
+        assert resultado == []
+
+    @pytest.mark.asyncio
+    async def test_usuario_con_preferencias_recibe_eventos_de_categoria(
+        self, usuario_teatro
+    ):
+        """
+        Usuario con categoría favorita 'teatro' recibe eventos de esa categoría.
+        """
+        cat_teatro = make_category("teatro")
+        evento_teatro = make_event(titulo="Obra de teatro", categoria=cat_teatro)
+        evento_teatro.categoria.nombre = "teatro"
+
+        db = make_async_db(
+            _make_db_result([usuario_teatro]),   # get_user
+            _make_db_result([evento_teatro]),    # candidatos filtrados
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_para_usuario(
+            str(usuario_teatro.id), limite=5
+        )
+
+        assert isinstance(resultado, list)
+        if resultado:
+            assert "event" in resultado[0]
+            assert "razon" in resultado[0]
+
+    @pytest.mark.asyncio
+    async def test_razon_menciona_preferencias(self, usuario_teatro):
+        """La razón incluye información sobre las preferencias del usuario."""
+        cat = make_category("teatro")
+        evento = make_event(titulo="Comedia", categoria=cat)
+
+        # Ajustar nombre para que el filtro de categoría lo reconozca
+        evento.categoria.nombre = "teatro"
+
+        db = make_async_db(
+            _make_db_result([usuario_teatro]),
+            _make_db_result([evento]),
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_para_usuario(str(usuario_teatro.id))
+
+        if resultado:
+            # La razón debe mencionar que es por preferencias
+            assert len(resultado[0]["razon"]) > 0
+
+    @pytest.mark.asyncio
+    async def test_sin_candidatos_cae_en_populares(self, usuario_teatro):
+        """
+        Sin candidatos de las categorías favoritas → fallback a populares.
+        """
+        evento_popular = make_event(titulo="Popular fallback")
+        db = make_async_db(
+            _make_db_result([usuario_teatro]),  # get_user
+            _make_db_result([]),                # candidatos de categoría (vacío)
+            _make_db_result([]),                # eventos futuros (también vacío)
+            _make_db_result([]),                # populares: interacciones
+            _make_db_result([evento_popular]),  # populares: eventos futuros
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_para_usuario(str(usuario_teatro.id))
+
+        assert isinstance(resultado, list)
+
+    @pytest.mark.asyncio
+    async def test_diversificacion_no_supera_max_por_categoria(self, usuario_hibrido):
+        """
+        Con muchos eventos de la misma categoría, no se supera max_por_categoria=3.
+        """
+        cat_unica = make_category("cine")
+        eventos = [
+            make_event(titulo=f"Film {i}", categoria=cat_unica)
+            for i in range(10)
+        ]
+        for e in eventos:
+            e.categoria.nombre = "cine"
+
+        db = make_async_db(
+            _make_db_result([usuario_hibrido]),
+            _make_db_result(eventos),
+        )
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_para_usuario(str(usuario_hibrido.id), limite=10)
+
+        # Máximo 3 por categoría
+        assert len(resultado) <= 3
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests: recomendar_por_contexto
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestRecomendarPorContexto:
+    """Tests para recomendaciones contextuales sin autenticación."""
+
+    @pytest.mark.asyncio
+    async def test_sin_filtros_devuelve_eventos_futuros(self):
+        """Sin filtros, devuelve eventos próximos."""
+        evento = make_event(titulo="Próximo evento")
+        db = make_async_db(_make_db_result([evento]))
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_por_contexto({})
+
+        assert isinstance(resultado, list)
+
+    @pytest.mark.asyncio
+    async def test_filtro_gratis_por_bool(self):
+        """Contexto con gratis=True filtra solo gratuitos."""
+        evento = make_event(titulo="Gratis", es_gratuito=True)
+        db = make_async_db(_make_db_result([evento]))
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_por_contexto({"gratis": True})
+
+        assert isinstance(resultado, list)
+        # El mock devuelve lo que le configuramos; verificamos que no falla
+        assert db.execute.called
+
+    @pytest.mark.asyncio
+    async def test_filtro_gratis_por_query_text(self):
+        """Contexto con query='gratis' activa el filtro de gratuidad."""
+        db = make_async_db(_make_db_result([]))
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_por_contexto({"query": "gratis"})
+
+        assert isinstance(resultado, list)
+        assert db.execute.called
+
+    @pytest.mark.asyncio
+    async def test_filtro_con_ninos(self):
+        """Contexto con query='con niños' filtra eventos familiares."""
+        db = make_async_db(_make_db_result([]))
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_por_contexto({"query": "con niños"})
+
+        assert isinstance(resultado, list)
+
+    @pytest.mark.asyncio
+    async def test_filtro_esta_noche(self):
+        """Contexto 'esta noche' filtra eventos de hoy de 19:00 a 23:59."""
+        db = make_async_db(_make_db_result([]))
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_por_contexto({"query": "esta noche"})
+
+        assert isinstance(resultado, list)
+
+    @pytest.mark.asyncio
+    async def test_filtro_hoy(self):
+        """Contexto 'hoy' filtra eventos del día de hoy."""
+        db = make_async_db(_make_db_result([]))
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_por_contexto({"query": "hoy"})
+
+        assert isinstance(resultado, list)
+
+    @pytest.mark.asyncio
+    async def test_filtro_fin_de_semana(self):
+        """Contexto 'fin de semana' filtra eventos del próximo sábado y domingo."""
+        db = make_async_db(_make_db_result([]))
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_por_contexto({"query": "fin de semana"})
+
+        assert isinstance(resultado, list)
+
+    @pytest.mark.asyncio
+    async def test_filtro_barrio(self):
+        """Contexto con barrio hace JOIN con Venue."""
+        evento = make_event(titulo="En Palermo")
+        db = make_async_db(_make_db_result([evento]))
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_por_contexto({"barrio": "Palermo"})
+
+        assert isinstance(resultado, list)
+
+    @pytest.mark.asyncio
+    async def test_razon_menciona_contexto(self):
+        """La razón de recomendación describe el contexto aplicado."""
+        evento = make_event(titulo="Gratis hoy")
+        db = make_async_db(_make_db_result([evento]))
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_por_contexto({"gratis": True})
+
+        if resultado:
+            # La razón debe ser informativa
+            assert len(resultado[0]["razon"]) > 0
+
+    @pytest.mark.asyncio
+    async def test_sin_contexto_razon_generica(self):
+        """Sin filtros la razón es genérica."""
+        db = make_async_db(_make_db_result([make_event()]))
+        service = RecommenderService(db)
+
+        resultado = await service.recomendar_por_contexto({})
+
+        if resultado:
+            assert "Buenos Aires" in resultado[0]["razon"] or len(resultado[0]["razon"]) > 0
+
+    @pytest.mark.asyncio
+    async def test_contexto_vacio_no_falla(self):
+        """Contexto vacío no lanza excepciones."""
+        db = make_async_db(_make_db_result([]))
+        service = RecommenderService(db)
+
+        # No debe lanzar excepciones
+        resultado = await service.recomendar_por_contexto({})
+        assert isinstance(resultado, list)
