@@ -8,6 +8,8 @@
 const nextConfig = {
   // Habilitar React Strict Mode para detectar problemas potenciales
   reactStrictMode: true,
+  // Requerido por el Dockerfile para el runner standalone
+  output: 'standalone',
 
   // Configuración de imágenes
   images: {
