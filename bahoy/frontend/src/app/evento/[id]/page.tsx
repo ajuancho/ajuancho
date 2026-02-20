@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ChevronRight, Home, ArrowLeft } from 'lucide-react'
-import { eventsApi } from '@/lib/api'
+import { eventsApi, type EventSummary } from '@/lib/api'
+
 import EventDetail from '@/components/events/EventDetail'
 
 type Props = {
@@ -55,7 +56,7 @@ export default async function EventoPage({ params }: Props) {
   }
 
   // Fetch similar events by same category (best-effort)
-  let eventosSimilares = []
+  let eventosSimilares: EventSummary[] = []
   try {
     const categoria = event.categorias?.[0]?.nombre
     const { items } = await eventsApi.list({
