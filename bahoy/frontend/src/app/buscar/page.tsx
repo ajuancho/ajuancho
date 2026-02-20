@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import SearchBar from '@/components/search/SearchBar'
 import EventGrid from '@/components/events/EventGrid'
 import { eventsApi, type EventSummary } from '@/lib/api'
 
-export default function BuscarPage() {
+function BuscarContent() {
   const searchParams = useSearchParams()
   const [query, setQuery] = useState(searchParams.get('q') ?? '')
   const [events, setEvents] = useState<EventSummary[]>([])
@@ -79,5 +79,13 @@ export default function BuscarPage() {
         </>
       )}
     </div>
+  )
+}
+
+export default function BuscarPage() {
+  return (
+    <Suspense>
+      <BuscarContent />
+    </Suspense>
   )
 }

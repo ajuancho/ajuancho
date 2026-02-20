@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import FilterSidebar, { type Filters } from '@/components/filters/FilterSidebar'
 import EventGrid from '@/components/events/EventGrid'
@@ -83,7 +83,7 @@ function countActiveFilters(f: Filters, q: string): number {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function ExplorarPage() {
+function ExplorarContent() {
   const searchParams = useSearchParams()
   const router       = useRouter()
 
@@ -462,6 +462,14 @@ export default function ExplorarPage() {
         </>
       )}
     </div>
+  )
+}
+
+export default function ExplorarPage() {
+  return (
+    <Suspense>
+      <ExplorarContent />
+    </Suspense>
   )
 }
 
