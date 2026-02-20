@@ -10,6 +10,7 @@ from celery.result import AsyncResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.services.bias_analysis import BiasAnalyzer
 from app.services.metrics import MetricsService
 from app.tasks import (
     task_scrape_agenda_ba,
@@ -175,6 +176,38 @@ async def get_metrics(
     """
     service = MetricsService(db)
     reporte = await service.generar_reporte(periodo_dias=periodo)
+    return reporte
+
+
+# ========== Endpoint de Análisis de Sesgos ==========
+
+@router.get("/bias-report")
+async def get_bias_report(
+    periodo: int = Query(
+        default=30,
+        ge=1,
+        le=365,
+        description="Período en días a analizar",
+    ),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Devuelve el reporte completo de sesgos del sistema de recomendaciones.
+
+    Sesgos analizados:
+    - **popularidad**: ¿el sistema solo recomienda eventos muy conocidos?
+    - **geografico**: ¿se favorecen ciertos barrios frente al catálogo?
+    - **precio**: ¿se favorecen ciertos rangos de precio?
+    - **burbuja_de_filtro**: ¿los usuarios solo ven lo que ya les gusta?
+    - **fuente**: ¿dominan eventos de ciertas fuentes scrapers?
+
+    Incluye sugerencias de mitigación cuando se detectan alertas.
+
+    Args:
+        periodo: Número de días hacia atrás a analizar (1-365, defecto: 30)
+    """
+    analyzer = BiasAnalyzer(db)
+    reporte = await analyzer.generar_reporte_completo(periodo_dias=periodo)
     return reporte
 
 
