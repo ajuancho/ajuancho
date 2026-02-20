@@ -12,6 +12,8 @@ yarn-error.log*
 # ========== Next.js ==========
 .next/
 out/
+tsconfig.tsbuildinfo
+next-env.d.ts
 
 # ========== Variables de entorno (no incluir secretos) ==========
 .env
