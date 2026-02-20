@@ -41,7 +41,7 @@ const FECHA_LABELS: Record<string, string> = {
 
 // ─── URL helpers ──────────────────────────────────────────────────────────────
 
-function parseFiltersFromParams(params: URLSearchParams): Filters {
+function parseFiltersFromParams(params: Pick<URLSearchParams, 'get' | 'getAll'>): Filters {
   return {
     categorias:  params.getAll('categoria'),
     fecha:       (params.get('fecha') as Filters['fecha']) ?? '',
