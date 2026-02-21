@@ -6,13 +6,14 @@ import { eventsApi, type EventSummary, type EventDetail as EventDetailData } fro
 import EventDetail from '@/components/events/EventDetail'
 
 type Props = {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 // ─── Dynamic SEO metadata ────────────────────────────────────────────────────
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const id = Number(params.id)
+  const { id: idStr } = await params
+  const id = Number(idStr)
   if (isNaN(id)) return { title: 'Evento no encontrado' }
 
   try {
@@ -45,7 +46,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default async function EventoPage({ params }: Props) {
-  const id = Number(params.id)
+  const { id: idStr } = await params
+  const id = Number(idStr)
   if (isNaN(id)) return <EventoNoEncontrado />
 
   let event: EventDetailData

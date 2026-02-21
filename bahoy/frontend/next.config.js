@@ -16,10 +16,8 @@ const nextConfig = {
     // Dominios permitidos para cargar imágenes externas
     // Agregar aquí los dominios de donde se cargarán imágenes de propiedades
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**.example.com', // Cambiar por dominios reales
-      },
+      { protocol: 'https', hostname: '**' },
+      { protocol: 'http', hostname: '**' },
     ],
     // Tamaños de imágenes optimizadas
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],

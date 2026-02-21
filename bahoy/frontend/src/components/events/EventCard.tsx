@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Calendar, MapPin, Tag } from 'lucide-react'
 import { cn, formatEventDate, formatPrice } from '@/lib/utils'
 import type { EventSummary } from '@/lib/api'
@@ -22,10 +23,12 @@ export default function EventCard({ event, className }: EventCardProps) {
         {/* Image */}
         <div className="relative h-48 bg-secondary-100 overflow-hidden">
           {event.imagen_url ? (
-            <img
+            <Image
               src={event.imagen_url}
               alt={event.titulo}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              fill
+              sizes="(max-width: 640px) 100vw, 288px"
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary-700 to-secondary-900">

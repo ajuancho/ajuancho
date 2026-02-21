@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Calendar, MapPin, Tag } from 'lucide-react'
 import { cn, formatEventDate, formatPrice } from '@/lib/utils'
 import type { EventSummary } from '@/lib/api'
@@ -63,10 +64,12 @@ export default function EventList({
               {/* Image */}
               <div className="relative w-36 sm:w-48 shrink-0 bg-secondary-100 overflow-hidden min-h-[7rem]">
                 {event.imagen_url ? (
-                  <img
+                  <Image
                     src={event.imagen_url}
                     alt={event.titulo}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    fill
+                    sizes="(max-width: 640px) 144px, 192px"
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary-700 to-secondary-900">

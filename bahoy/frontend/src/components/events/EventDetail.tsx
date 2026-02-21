@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   Calendar,
   MapPin,
@@ -115,10 +116,13 @@ export default function EventDetail({ event, eventosSimilares = [] }: EventDetai
       {/* ── Hero image ────────────────────────────────────────────── */}
       <div className="relative h-72 sm:h-96 md:h-[28rem] bg-secondary-800 rounded-2xl overflow-hidden mb-8">
         {event.imagen_url ? (
-          <img
+          <Image
             src={event.imagen_url}
             alt={event.titulo}
-            className="w-full h-full object-cover"
+            fill
+            sizes="(max-width: 768px) 100vw, 1024px"
+            className="object-cover"
+            priority
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary-700 to-secondary-900">
