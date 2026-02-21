@@ -52,6 +52,7 @@ yarn-error.log*
 out/
 build/
 dist/
+tsconfig.tsbuildinfo
 
 # Testing
 coverage/

@@ -1,6 +1,6 @@
 # ========== Framework Web ==========
-fastapi==0.109.0              # Framework web moderno y rápido
-uvicorn[standard]==0.27.0     # Servidor ASGI de alto rendimiento
+fastapi==0.115.14            # Framework web moderno y rápido
+uvicorn[standard]==0.27.0    # Servidor ASGI de alto rendimiento
 pydantic==2.5.3              # Validación de datos y configuración
 pydantic-settings==2.1.0     # Gestión de configuración con Pydantic
 
@@ -22,17 +22,17 @@ flower==2.0.1                # Monitoreo de Celery (UI web)
 crochet==2.1.1               # Integración de Twisted/Scrapy con Celery
 
 # ========== Web Scraping ==========
-scrapy==2.11.0               # Framework de web scraping robusto
+scrapy==2.11.2               # Framework de web scraping robusto
 beautifulsoup4==4.12.3       # Parsing de HTML y XML
 lxml==5.1.0                  # Parser XML/HTML rápido
-requests==2.31.0             # Cliente HTTP simple
+requests==2.32.4             # Cliente HTTP simple
 httpx==0.26.0                # Cliente HTTP asíncrono moderno
 playwright==1.41.1           # Automatización de navegador para sitios complejos
 
 # ========== Procesamiento de Lenguaje Natural (NLP) ==========
-transformers==4.37.2         # Modelos de transformers (BERT, etc.)
-sentence-transformers==2.3.1 # Embeddings de oraciones
-torch==2.2.0                 # PyTorch para modelos de ML
+transformers==4.53.0         # Modelos de transformers (BERT, etc.)
+sentence-transformers==3.0.0 # Embeddings de oraciones
+torch==2.6.0                 # PyTorch para modelos de ML
 spacy==3.7.2                 # NLP industrial
 langdetect==1.0.9            # Detección de idioma
 
@@ -41,9 +41,9 @@ pandas==2.2.0                # Manipulación de datos
 numpy==1.26.3                # Operaciones numéricas
 
 # ========== Autenticación y Seguridad ==========
-python-jose[cryptography]==3.3.0  # JWT tokens
+python-jose[cryptography]==3.3.0  # JWT tokens (CVE pendiente: no hay fix en PyPI aún)
 passlib[bcrypt]==1.7.4       # Hashing de contraseñas
-python-multipart==0.0.6      # Soporte para formularios multipart
+python-multipart==0.0.22     # Soporte para formularios multipart
 
 # ========== Utilidades ==========
 python-dotenv==1.0.0         # Cargar variables de entorno desde .env
@@ -53,7 +53,7 @@ email-validator==2.1.0.post1 # Validación de emails
 
 # ========== Monitoreo y Logging ==========
 loguru==0.7.2                # Logging mejorado
-sentry-sdk[fastapi]==1.40.0  # Monitoreo de errores
+sentry-sdk[fastapi]==1.45.1  # Monitoreo de errores
 prometheus-client==0.20.0    # Métricas Prometheus (endpoint /metrics)
 
 # ========== Testing ==========
@@ -64,7 +64,7 @@ httpx==0.26.0                # Cliente HTTP para tests
 faker==22.6.0                # Generación de datos de prueba
 
 # ========== Desarrollo ==========
-black==24.1.1                # Formateador de código
+black==24.3.0                # Formateador de código
 flake8==7.0.0                # Linter de código
 mypy==1.8.0                  # Type checking
 isort==5.13.2                # Ordenar imports
