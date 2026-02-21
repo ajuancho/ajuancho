@@ -6,10 +6,10 @@ FROM node:18-alpine AS deps
 WORKDIR /app
 
 # Copiar archivos de dependencias
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json ./
 
-# Instalar dependencias
-RUN npm install
+# Instalar dependencias (ci respeta el lockfile exacto)
+RUN npm ci
 
 # ========== Stage 2: Builder ==========
 FROM node:18-alpine AS builder
