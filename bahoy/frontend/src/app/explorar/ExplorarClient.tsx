@@ -111,11 +111,11 @@ export default function ExplorarClient() {
   const [loading,     setLoading]     = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const [filters, setFilters] = useState<Filters>(() => parseFiltersFromParams(searchParams))
-  const [query,   setQuery]   = useState<string>(() => searchParams.get('q') ?? '')
-  const [orden,   setOrden]   = useState<SortOrder>(() => (searchParams.get('orden') as SortOrder) || 'relevancia')
-  const [vista,   setVista]   = useState<ViewMode>(() => (searchParams.get('vista') as ViewMode) || 'grid')
-  const [page,    setPage]    = useState<number>(() => Number(searchParams.get('page') ?? 1))
+  const [filters, setFilters] = useState<Filters>(() => parseFiltersFromParams(searchParams ?? new URLSearchParams()))
+  const [query,   setQuery]   = useState<string>(() => searchParams?.get('q') ?? '')
+  const [orden,   setOrden]   = useState<SortOrder>(() => (searchParams?.get('orden') as SortOrder) || 'relevancia')
+  const [vista,   setVista]   = useState<ViewMode>(() => (searchParams?.get('vista') as ViewMode) || 'grid')
+  const [page,    setPage]    = useState<number>(() => Number(searchParams?.get('page') ?? 1))
 
   // Sync state → URL (share-friendly links)
   useEffect(() => {

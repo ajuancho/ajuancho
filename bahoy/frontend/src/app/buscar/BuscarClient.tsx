@@ -8,7 +8,7 @@ import { eventsApi, type EventSummary } from '@/lib/api'
 
 export default function BuscarClient() {
   const searchParams = useSearchParams()
-  const [query, setQuery] = useState(searchParams.get('q') ?? '')
+  const [query, setQuery] = useState(searchParams?.get('q') ?? '')
   const [events, setEvents] = useState<EventSummary[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
@@ -32,7 +32,7 @@ export default function BuscarClient() {
 
   // Run initial search from URL param
   useEffect(() => {
-    const q = searchParams.get('q')
+    const q = searchParams?.get('q')
     if (q) runSearch(q)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

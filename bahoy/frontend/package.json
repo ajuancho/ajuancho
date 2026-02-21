@@ -1,6 +1,6 @@
 {
   "name": "bahoy-frontend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Frontend de Bahoy - Plataforma de búsqueda de propiedades",
   "private": true,
   "scripts": {
