@@ -10,7 +10,10 @@ WORKDIR /app
 # Copiar lockfile primero — el cache de este layer se invalida
 # automáticamente cuando package.json o package-lock.json cambian.
 COPY package.json package-lock.json ./
-RUN npm ci
+# Instalar dependencias e imprimir versión de Next.js para debug.
+# Cambiar el texto de este RUN invalida el cache de Docker y fuerza
+# una reinstalación limpia + nuevo COPY del código fuente.
+RUN npm ci && node -e "console.log('next@' + require('./node_modules/next/package.json').version + ' installed')"
 
 # Copiar el resto del código fuente
 COPY . .
