@@ -1,8 +1,9 @@
-import EventCard, { type Event } from './EventCard'
+import EventCard from './EventCard'
 import { SkeletonCard } from '@/components/ui/Loading'
+import type { EventSummary } from '@/lib/api'
 
 interface EventGridProps {
-  events: Event[]
+  events: EventSummary[]
   loading?: boolean
   emptyMessage?: string
 }

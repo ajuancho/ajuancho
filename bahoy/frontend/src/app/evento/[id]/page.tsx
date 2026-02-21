@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ChevronRight, Home, ArrowLeft } from 'lucide-react'
-import { eventsApi, type EventSummary } from '@/lib/api'
+import { eventsApi, type EventSummary, type EventDetail as EventDetailData } from '@/lib/api'
 
 import EventDetail from '@/components/events/EventDetail'
 
@@ -48,7 +48,7 @@ export default async function EventoPage({ params }: Props) {
   const id = Number(params.id)
   if (isNaN(id)) return <EventoNoEncontrado />
 
-  let event
+  let event: EventDetailData
   try {
     event = await eventsApi.getById(id)
   } catch {

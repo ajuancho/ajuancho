@@ -4,14 +4,9 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { ArrowRight, MapPin, ChevronLeft, ChevronRight } from 'lucide-react'
 import SearchBar from '@/components/search/SearchBar'
-import EventCard, { type Event } from '@/components/events/EventCard'
+import EventCard from '@/components/events/EventCard'
 import { eventsApi, type EventSummary } from '@/lib/api'
 import { SkeletonCard } from '@/components/ui/Loading'
-
-// EventSummary and Event are structurally identical – cast once here
-function toEvents(items: EventSummary[]): Event[] {
-  return items as Event[]
-}
 
 // ─── Static data ─────────────────────────────────────────────────────────────
 
@@ -51,7 +46,7 @@ function SectionHeader({ title, href }: SectionHeaderProps) {
 }
 
 interface EventCarouselProps {
-  events: Event[]
+  events: EventSummary[]
   loading: boolean
 }
 
@@ -115,26 +110,26 @@ function EventCarousel({ events, loading }: EventCarouselProps) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
-  const [popularEvents, setPopularEvents]   = useState<Event[]>([])
-  const [semanaEvents,  setSemanaEvents]    = useState<Event[]>([])
-  const [gratisEvents,  setGratisEvents]    = useState<Event[]>([])
+  const [popularEvents, setPopularEvents]   = useState<EventSummary[]>([])
+  const [semanaEvents,  setSemanaEvents]    = useState<EventSummary[]>([])
+  const [gratisEvents,  setGratisEvents]    = useState<EventSummary[]>([])
   const [loadingPopular, setLoadingPopular] = useState(true)
   const [loadingSemana,  setLoadingSemana]  = useState(true)
   const [loadingGratis,  setLoadingGratis]  = useState(true)
 
   useEffect(() => {
     eventsApi.list({ size: 8 })
-      .then((res) => setPopularEvents(toEvents(res.items)))
+      .then((res) => setPopularEvents(res.items))
       .catch(() => {})
       .finally(() => setLoadingPopular(false))
 
     eventsApi.list({ fecha: 'semana', size: 6 })
-      .then((res) => setSemanaEvents(toEvents(res.items)))
+      .then((res) => setSemanaEvents(res.items))
       .catch(() => {})
       .finally(() => setLoadingSemana(false))
 
     eventsApi.list({ precio: 'gratis', size: 8 })
-      .then((res) => setGratisEvents(toEvents(res.items)))
+      .then((res) => setGratisEvents(res.items))
       .catch(() => {})
       .finally(() => setLoadingGratis(false))
   }, [])

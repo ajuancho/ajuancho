@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import { Calendar, MapPin, Tag } from 'lucide-react'
 import { cn, formatEventDate, formatPrice } from '@/lib/utils'
-import type { Event } from './EventCard'
+import type { EventSummary } from '@/lib/api'
 
 interface EventListProps {
-  events: Event[]
+  events: EventSummary[]
   loading?: boolean
   emptyMessage?: string
 }

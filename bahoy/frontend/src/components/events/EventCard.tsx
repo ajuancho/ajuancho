@@ -1,26 +1,10 @@
 import Link from 'next/link'
 import { Calendar, MapPin, Tag } from 'lucide-react'
 import { cn, formatEventDate, formatPrice } from '@/lib/utils'
-
-export interface Event {
-  id: number
-  titulo: string
-  descripcion: string
-  fecha_inicio: string
-  fecha_fin?: string
-  precio_min?: number
-  precio_max?: number
-  es_gratuito: boolean
-  imagen_url?: string
-  venue?: {
-    nombre: string
-    barrio?: string
-  }
-  categorias?: Array<{ nombre: string }>
-}
+import type { EventSummary } from '@/lib/api'
 
 interface EventCardProps {
-  event: Event
+  event: EventSummary
   className?: string
 }
 
