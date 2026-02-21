@@ -1,12 +1,7 @@
 import { Suspense } from 'react'
 import BuscarClient from './BuscarClient'
 
-interface PageProps {
-  params?: Record<string, string>
-  searchParams?: Record<string, string | string[] | undefined>
-}
-
-export default function BuscarPage(_props: PageProps) {
+export default function BuscarPage() {
   return (
     <Suspense>
       <BuscarClient />
