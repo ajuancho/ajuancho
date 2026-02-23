@@ -11,7 +11,21 @@ COPY package.json package-lock.json* ./
 # Instalar dependencias
 RUN npm install
 
-# ========== Stage 2: Builder ==========
+# ========== Stage 2: Dev ==========
+# Para desarrollo con hot-reload (usado por docker-compose)
+FROM node:18-alpine AS dev
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+ENV NEXT_TELEMETRY_DISABLED 1
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]
+
+# ========== Stage 3: Builder ==========
 FROM node:18-alpine AS builder
 WORKDIR /app
 
@@ -25,7 +39,7 @@ ENV NEXT_TELEMETRY_DISABLED 1
 # Build de la aplicación
 RUN npm run build
 
-# ========== Stage 3: Runner ==========
+# ========== Stage 4: Runner ==========
 FROM node:18-alpine AS runner
 WORKDIR /app
 

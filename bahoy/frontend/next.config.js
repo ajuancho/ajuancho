@@ -6,6 +6,9 @@
  */
 
 const nextConfig = {
+  // Generar output standalone para Docker (produce .next/standalone)
+  output: 'standalone',
+
   // Habilitar React Strict Mode para detectar problemas potenciales
   reactStrictMode: true,
 
